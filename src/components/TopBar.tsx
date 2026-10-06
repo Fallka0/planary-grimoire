@@ -1,10 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { CHAPTERS, SEAL_NAME, type SealKind } from "@/game/seals";
+import { buildAuthUrl } from "@/lib/auth";
+import { absorbSessionFromHash, loadSession } from "@/lib/session";
 
 const CASINO_URL = process.env.NEXT_PUBLIC_CASINO_URL || "https://casino.planary.ch";
+
+/**
+ * Who is playing, if anybody.
+ *
+ * Signing in is optional here and always will be: nothing is staked, so the
+ * game owes a stranger a full run. A session only decides whether a finished
+ * book is recorded in the casino, so the prompt says that rather than standing
+ * in the way.
+ */
+function Who() {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const session = absorbSessionFromHash() ?? loadSession();
+    setName(session?.name ?? null);
+  }, []);
+
+  if (name) return <span className="who" title="Finished books are recorded in the casino">{name}</span>;
+  return (
+    <button
+      type="button"
+      className="who who-signin"
+      onClick={() => window.location.assign(buildAuthUrl("login", window.location.href.split("#")[0], true))}
+    >
+      Sign in to keep the badges
+    </button>
+  );
+}
 
 /** The house chip, in this game's letter. Flat, two inks, as everywhere. */
 export function Mark({ size = 34 }: { size?: number }) {
@@ -55,6 +86,7 @@ export function TopBar({ chapter, kind, ink }: { chapter?: number; kind?: SealKi
           <span className="ink-label">ink</span>
         </span>
       ) : null}
+      <Who />
     </header>
   );
 }

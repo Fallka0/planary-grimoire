@@ -749,3 +749,27 @@ ul, ol { padding: 0; list-style: none; }
   font-size: 13.5px;
   font-weight: 600;
 }
+
+/* Who is playing, if anybody. Signing in is optional: it only decides whether
+   a finished book is recorded back in the casino. */
+.who {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--layer-1);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.who:not(.ink) + .who { margin-left: 0; }
+.who-signin { transition: background-color 0.18s ease, color 0.18s ease; }
+.who-signin:hover { background: var(--layer-2); color: var(--text); }
+.topbar .ink ~ .who { margin-left: 0; }
+.topbar .who:only-of-type { margin-left: auto; }
