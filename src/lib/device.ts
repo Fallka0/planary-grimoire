@@ -73,6 +73,17 @@ export function fullscreenAvailable(): boolean {
   return Boolean(document.fullscreenEnabled ?? (document as unknown as { webkitFullscreenEnabled?: boolean }).webkitFullscreenEnabled);
 }
 
+/** Already launched from a home screen: there is no chrome left to remove. */
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    // iOS reports it here and nowhere else.
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
+
 export async function toggleFullscreen(): Promise<void> {
   if (typeof document === "undefined") return;
   const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
@@ -82,6 +93,13 @@ export async function toggleFullscreen(): Promise<void> {
       await (document.exitFullscreen?.() ?? doc.webkitExitFullscreen?.());
     } else {
       await (root.requestFullscreen?.() ?? root.webkitRequestFullscreen?.());
+      // Only allowed while fullscreen, and only on some platforms. Grimoire is
+      // a landscape game, so it is worth asking and shrugging at a refusal.
+      try {
+        await (screen.orientation as unknown as { lock?: (to: string) => Promise<void> }).lock?.("landscape");
+      } catch {
+        // Not permitted here. The rotate screen covers it.
+      }
     }
   } catch {
     // Refused — some browsers only allow it from certain gestures. Not fatal.

@@ -121,10 +121,38 @@ is sized off the viewport's own height rather than a fixed pixel count.
 
 It behaves like a game rather than a page: scrolling and rubber-banding are
 off, double-tap zoom is off, the notch's insets are honoured (in landscape it
-eats the edge the panel lives on), there is a fullscreen button where the
-browser allows one, and selecting, playing and breaking a seal each give a
+eats the edge the panel lives on), there is a way to be rid of the browser's
+own furniture (below), and selecting, playing and breaking a seal each give a
 short haptic tap. Sigils can be *tapped* as well as hovered, because without a
 mouse there was otherwise no way to read what your own book does.
+
+### Losing the browser bars
+
+An iPhone will not let a page ask for the whole screen — Safari implements the
+Fullscreen API on iPad and not on the phone — so a fullscreen *button* cannot
+be the whole answer, and for a while it was: `fullscreenAvailable()` came back
+false and the button quietly hid itself, leaving no route to a full screen at
+all on the device that needed it most.
+
+So Grimoire is also installable. There is a web manifest with
+`display: standalone` and `orientation: landscape`, the apple-specific meta
+that an iPhone still reads instead of it, and a set of PNG icons — iOS refuses
+an SVG here, and without one a home-screen Grimoire gets a screenshot of the
+page for an icon. Added to the home screen it opens with no address bar and no
+toolbar, which is the only way to get there on that browser. The expand button
+in the top bar knows which of the three situations it is in: it offers
+fullscreen where the API exists, explains Add to Home Screen where it does
+not, and disappears once you are already standalone.
+
+The icons are generated, like everything else here, by
+`node scripts/icons.mjs` — a small PNG encoder over node's own zlib and the
+mark drawn by arithmetic, because a stock macOS has no rasteriser and this was
+cheaper than adding a toolchain to get four squares.
+
+One detail worth writing down: the layout's `env(safe-area-inset-*)` rules
+were dead for their first week. Without `viewport-fit=cover` in the viewport
+meta every one of them resolves to `0`, silently, so all the careful work
+around the notch did exactly nothing and looked like it was working.
 
 ## At a keyboard
 

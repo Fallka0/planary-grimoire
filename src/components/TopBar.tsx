@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, BookOpen, Maximize2, Minimize2, Share, Volume2, VolumeX } from "lucide-react";
 import { CHAPTERS, SEAL_NAME, type SealKind } from "@/game/seals";
 import { sfx } from "@/lib/audio";
-import { fullscreenAvailable, toggleFullscreen, useFullscreen } from "@/lib/device";
+import { fullscreenAvailable, isStandalone, toggleFullscreen, useFullscreen } from "@/lib/device";
 import { buildAuthUrl } from "@/lib/auth";
 import { absorbSessionFromHash, loadSession } from "@/lib/session";
 
@@ -75,12 +75,59 @@ function Mute() {
   );
 }
 
-/** Fullscreen, where the browser allows it. iPhone Safari does not. */
+/**
+ * Getting rid of the browser.
+ *
+ * Three different answers, because the platforms give three:
+ *
+ *  - Already launched from a home screen: there is no chrome to remove, so
+ *    this disappears.
+ *  - Fullscreen API available (Android, desktop, iPad): a straight toggle.
+ *  - iPhone Safari: the API does not exist there at all, so the button cannot
+ *    do the thing — it explains the thing that does instead, rather than
+ *    hiding and leaving someone hunting for a setting that is not there.
+ */
 function Expand() {
   const on = useFullscreen();
-  const [can, setCan] = useState(false);
-  useEffect(() => setCan(fullscreenAvailable()), []);
-  if (!can) return null;
+  const [mode, setMode] = useState<"none" | "toggle" | "install">("none");
+  const [hint, setHint] = useState(false);
+
+  useEffect(() => {
+    if (isStandalone()) return setMode("none");
+    setMode(fullscreenAvailable() ? "toggle" : "install");
+  }, []);
+
+  if (mode === "none") return null;
+
+  if (mode === "install") {
+    return (
+      <span className="expand-anchor">
+        <button
+          type="button"
+          className="icon-btn"
+          aria-expanded={hint}
+          aria-label="How to play without the browser bars"
+          title="Full screen"
+          onClick={() => setHint((open) => !open)}
+        >
+          <Maximize2 size={17} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+        {hint ? (
+          <span className="expand-hint" role="dialog">
+            <strong>To lose the browser bars</strong>
+            <span>
+              This browser will not let a page ask for the whole screen. Tap <Share size={13} aria-hidden="true" /> Share, then{" "}
+              <b>Add to Home Screen</b>, and open Grimoire from there — it starts with no bars at all.
+            </span>
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setHint(false)}>
+              Right
+            </button>
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"

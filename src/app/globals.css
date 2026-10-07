@@ -1410,3 +1410,30 @@ ul, ol { padding: 0; list-style: none; }
   font-style: normal;
   letter-spacing: 0.08em;
 }
+
+/* The "how do I get rid of the browser" note, for the one platform that will
+   not let a page ask. */
+.expand-anchor { position: relative; display: inline-flex; }
+.expand-hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(280px, calc(100vw - 32px));
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  background: var(--layer-2);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+  animation: lift-in 0.26s var(--ease-out);
+}
+.expand-hint strong { color: var(--text); font-size: 14px; }
+.expand-hint b { color: var(--text); }
+.expand-hint svg { display: inline; vertical-align: -2px; }
