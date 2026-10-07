@@ -5,6 +5,7 @@ import type { Card, CardId, Suit } from "@/game/cards";
 import { shaped } from "@/game/covenants";
 import type { DeckId } from "@/game/decks";
 import type { LeafContents } from "@/game/leaves";
+import type { HandName } from "@/game/hands";
 import { renumber, type Rite, workRite } from "@/game/rites";
 import { preview, resolve, type Resolution, type ScoreEvent } from "@/game/score";
 import { CHAPTERS, SEAL_ORDER } from "@/game/seals";
@@ -20,6 +21,7 @@ import {
   newRun,
   type Offer,
   payoutFor,
+  raiseHand,
   refuse,
   reorder,
   reroll,
@@ -37,6 +39,7 @@ import {
 } from "@/game/run";
 import type { Sigil } from "@/game/sigils";
 import { sfx } from "./audio";
+import { haptic } from "./device";
 import { reportRun, type Unlocked } from "./casino";
 
 /**
@@ -202,8 +205,9 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
       discardsLeft: round.discards,
       handNumber: round.handNumber,
       warden: round.warden,
+      levels: run?.levels,
     });
-  }, [round, selected, sigils]);
+  }, [round, selected, sigils, run?.levels]);
 
   /** Opens the chosen seal and deals the first hand. */
   const openSeal = useCallback(
@@ -251,6 +255,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
         const has = current.selected.includes(id);
         if (!has && current.selected.length >= MAX_SELECT) return current;
         sfx.tap();
+        haptic.tap();
         return { ...current, selected: has ? current.selected.filter((x) => x !== id) : [...current.selected, id] };
       });
     },
@@ -267,6 +272,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
       discardsLeft: round.discards,
       handNumber: round.handNumber,
       warden: round.warden,
+      levels: run.levels,
     });
     if (!resolution) return;
 
@@ -277,6 +283,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     setPhase("scoring");
     setRunning({ points: 0, mult: 0 });
     sfx.play();
+    haptic.knock();
 
     let t = 760;
     resolution.events.forEach((event, i) => {
@@ -310,6 +317,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
           if (!current || !run) return current;
           if (current.score >= current.quota) {
             sfx.win();
+            haptic.win();
             setPhase("broken");
             return current;
           }
@@ -420,7 +428,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
 
   /** Keeps one thing out of an open leaf. A rite keeps the leaf open for its cards. */
   const keepFromLeaf = useCallback(
-    (choice: { sigil?: Sigil; card?: Card; rite?: Rite }) => {
+    (choice: { sigil?: Sigil; card?: Card; rite?: Rite; verse?: HandName }) => {
       if (!run || !leaf) return;
       if (choice.sigil) {
         setRun(addSigil(run, choice.sigil));
@@ -432,6 +440,13 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
         setRun(addCard(run, choice.card));
         setLeaf(null);
         sfx.press();
+        return;
+      }
+      if (choice.verse) {
+        setRun(raiseHand(run, choice.verse));
+        setNote(`${choice.verse} raised to level ${Math.max(1, run.levels[choice.verse] ?? 1) + 1}.`);
+        setLeaf(null);
+        sfx.rite();
         return;
       }
       if (choice.rite) {

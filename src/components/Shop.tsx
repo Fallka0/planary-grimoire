@@ -4,6 +4,11 @@ import { CHAPTERS, SEAL_NAME } from "@/game/seals";
 import { canBuy, type Offer, rerollCost } from "@/game/run";
 import type { useRun } from "@/lib/useRun";
 import { CardBack, PlayCard, SigilCard } from "./Card";
+import type { LeafKind } from "@/game/leaves";
+
+/** What is written across a shut leaf. One word per kind, and a kind that was
+    added later must appear here or it quietly inherits the previous one. */
+const LEAF_WORD: Record<LeafKind, string> = { sigil: "Sigils", card: "Cards", rite: "Rites", verse: "Verses" };
 
 /*
   The margin — what you do between seals.
@@ -43,7 +48,7 @@ function ForSale({ offer, game, wide }: { offer: Offer; game: Run; wide?: boolea
         {offer.kind === "sigil" && offer.sigil ? <SigilCard sigil={offer.sigil} muted={offer.sold} /> : null}
         {offer.kind === "leaf" ? (
           <span className={`leaf leaf-${offer.leaf}`}>
-            <span className="leaf-label poster">{offer.leaf === "sigil" ? "Sigils" : offer.leaf === "card" ? "Cards" : "Rites"}</span>
+            <span className="leaf-label poster">{LEAF_WORD[offer.leaf ?? "sigil"]}</span>
             <span className="leaf-seal poster">❧</span>
           </span>
         ) : null}

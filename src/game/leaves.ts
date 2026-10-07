@@ -9,11 +9,12 @@
  */
 
 import { type Card, cardId, RANKS, type Rank, SUITS, type Suit } from "./cards";
+import { HAND_ORDER, type HandName } from "./hands";
 import type { Rng } from "./rng";
 import { RITES, type Rite } from "./rites";
 import { SIGILS, type Sigil, TIER_WEIGHT } from "./sigils";
 
-export type LeafKind = "sigil" | "card" | "rite";
+export type LeafKind = "sigil" | "card" | "rite" | "verse";
 
 export interface LeafKindSpec {
   kind: LeafKind;
@@ -62,6 +63,17 @@ export const LEAF_KINDS: LeafKindSpec[] = [
     ink: "#fbf1ea",
     plate: "#c58bff",
   },
+  {
+    kind: "verse",
+    name: "A verse leaf",
+    note: "Three verses. Keep one, and that hand is raised for the rest of the run.",
+    price: 6,
+    shown: 3,
+    keep: 1,
+    field: "#16100a",
+    ink: "#f7d77e",
+    plate: "#b8761c",
+  },
 ];
 
 export const LEAF_BY_KIND = new Map(LEAF_KINDS.map((leaf) => [leaf.kind, leaf]));
@@ -72,6 +84,8 @@ export interface LeafContents {
   sigils?: Sigil[];
   cards?: Card[];
   rites?: Rite[];
+  /** A verse leaf: which hands it offers to raise. */
+  verses?: HandName[];
 }
 
 /**
@@ -98,6 +112,20 @@ export function fillLeaf(kind: LeafKind, rng: Rng, held: readonly string[]): Lea
 
   if (kind === "rite") {
     return { kind, rites: rng.sample(RITES, spec.shown) };
+  }
+
+  if (kind === "verse") {
+    // Weighted toward the hands people actually make: a verse for a straight
+    // flush is a lovely thing to be offered and almost never the right buy.
+    const weight = (name: HandName) => (["High card", "Pair", "Two pair", "Three of a kind"].includes(name) ? 5 : name === "Straight flush" ? 1 : 3);
+    const pool = [...HAND_ORDER];
+    const picked: HandName[] = [];
+    for (let i = 0; i < spec.shown && pool.length; i++) {
+      const name = rng.weighted(pool, weight);
+      picked.push(name);
+      pool.splice(pool.indexOf(name), 1);
+    }
+    return { kind, verses: picked };
   }
 
   const cards: Card[] = Array.from({ length: spec.shown }, () => {

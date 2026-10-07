@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { prettyCard, SUITS, type Suit, SUIT_NAMES } from "@/game/cards";
+import { HAND_STEPS, levelled, levelOf } from "@/game/hands";
 import { LEAF_BY_KIND } from "@/game/leaves";
 import type { useRun } from "@/lib/useRun";
 import { PlayCard, SigilCard } from "./Card";
@@ -114,6 +115,26 @@ export function OpenLeaf({ game }: { game: Run }) {
               <span className="leaf-choice-note">{card.mark ? `${prettyCard(card)}, marked` : prettyCard(card)}</span>
             </button>
           ))}
+
+          {leaf.contents.verses?.map((name) => {
+            const level = levelOf(run.levels, name);
+            const now = levelled(name, level);
+            const next = levelled(name, level + 1);
+            return (
+              <button key={name} type="button" className="leaf-choice" onClick={() => game.keepFromLeaf({ verse: name })}>
+                <span className="verse-card">
+                  <span className="verse-level poster">Lvl {level + 1}</span>
+                  <span className="verse-name poster">{name}</span>
+                  <span className="verse-figures poster num">
+                    {next.points} × {next.mult}
+                  </span>
+                </span>
+                <span className="leaf-choice-note">
+                  Now {now.points} × {now.mult}. Every level adds {HAND_STEPS[name].points} points and {HAND_STEPS[name].mult} mult, for good.
+                </span>
+              </button>
+            );
+          })}
 
           {leaf.contents.rites?.map((rite) => (
             <button key={rite.id} type="button" className="leaf-choice" onClick={() => game.keepFromLeaf({ rite })}>

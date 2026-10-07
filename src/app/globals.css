@@ -61,6 +61,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100dvh;
+  /* A game, not a document: no rubber-banding, no double-tap zoom, no
+     accidental text selection while dragging across a fan of cards. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   color: var(--text);
   font-family: var(--font-ui), system-ui, sans-serif;
   font-size: 15px;
@@ -81,6 +86,8 @@ ul, ol { padding: 0; list-style: none; }
 :focus-visible { outline: 2px solid var(--cherry); outline-offset: 2px; }
 
 .num { font-variant-numeric: tabular-nums; }
+.card, .hand-card, .book, .controls, .panel, .seal, .ware, .rotate { user-select: none; -webkit-user-select: none; }
+
 .poster {
   font-family: var(--font-poster), var(--font-ui), sans-serif;
   font-weight: 900;
@@ -146,7 +153,16 @@ ul, ol { padding: 0; list-style: none; }
 
 /* ── Shell ─────────────────────────────────────── */
 
-.app { min-height: 100dvh; display: flex; flex-direction: column; gap: 16px; padding: 16px; }
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* The notch eats the short edges in landscape, which is exactly where the
+     panel and the deck live, so the insets are honoured rather than guessed. */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
 .stage { flex: 1; width: 100%; max-width: 1480px; margin: 0 auto; }
 
 .topbar {
@@ -370,6 +386,7 @@ ul, ol { padding: 0; list-style: none; }
 /* The book: sigils in a row, left to right, in firing order. */
 .book { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .book-slot { position: relative; transition: transform 0.3s var(--ease-pop); }
+.book-press { display: block; border-radius: 10px; }
 .book-slot:hover { transform: translateY(-8px); }
 .book-slot.is-firing { animation: wobble 0.66s var(--ease-pop); }
 .book-empty { width: 120px; height: 168px; border-radius: 10px; border: 1.5px dashed rgba(251, 241, 234, 0.4); }
@@ -446,7 +463,9 @@ ul, ol { padding: 0; list-style: none; }
 .readout-sum { font-size: 14px; font-weight: 600; color: var(--ink-2); }
 
 /* The hand, fanned. */
-.hand { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 210px; margin-top: 12px; }
+/* How far the fan bows. Flattened on a short screen, where a deep curve puts
+   the outer cards on top of the controls. */
+.hand { display: flex; justify-content: center; align-items: flex-end; gap: 0; min-height: 210px; margin-top: 12px; --bow: 1.8px; --lift: calc(var(--curve, 0) * var(--bow)); }
 .hand-card {
   flex: 0 0 auto;
   width: 120px;
@@ -941,6 +960,9 @@ ul, ol { padding: 0; list-style: none; }
 .leaf-sigil { --leaf-field: #1d1846; }
 .leaf-card { --leaf-field: #b3122e; }
 .leaf-rite { --leaf-field: #3b0f5c; }
+.leaf-verse { --leaf-field: #16100a; }
+.leaf-verse .leaf-seal, .leaf-verse .leaf-label { color: #f7d77e; }
+.leaf-verse::before { border-color: rgba(247, 215, 126, 0.55); }
 .leaf-seal { position: relative; font-size: 44px; color: #f6eee4; opacity: 0.9; }
 .leaf-label { position: absolute; bottom: 14px; left: 0; right: 0; font-size: 15px; color: #f6eee4; text-align: center; }
 
@@ -1114,3 +1136,277 @@ ul, ol { padding: 0; list-style: none; }
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 .icon-btn:hover { background: var(--layer-2); color: var(--text); }
+
+/* ══════════════════════════════════════════════════
+   THE RUN SHEET
+   Your deck, your book and the hand ladder, a button
+   away at any moment — because before this existed the
+   deck was visible only inside a rite and a sigil's
+   rule only on hover, which on a phone meant never.
+   ══════════════════════════════════════════════════ */
+
+.run-sheet { max-height: min(86dvh, 760px); overflow-y: auto; }
+.run-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.run-head h2 { font-size: 2rem; }
+.run-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.run-tab {
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 999px;
+  background: var(--layer-1);
+  border: 1px solid var(--line-2);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.run-tab:hover { background: var(--layer-2); color: var(--text); }
+.run-tab[aria-selected="true"] { background: var(--cherry-fill); border-color: transparent; color: #fff; }
+
+.deck-cell.is-hand .card { box-shadow: 0 0 0 2px var(--plate); }
+.deck-cell.is-gone { opacity: 0.32; }
+
+.run-book { display: flex; flex-direction: column; gap: 12px; }
+.run-sigil { display: flex; gap: 14px; align-items: flex-start; }
+.run-sigil > div { display: flex; flex-direction: column; gap: 4px; }
+.run-sigil-name { font-size: 1.25rem; }
+.run-sigil p { color: var(--text-2); font-size: 13.5px; }
+.run-extras { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.run-extra { color: var(--text-2); font-size: 13px; }
+.run-extra b { color: var(--text); }
+
+.run-hands { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.run-hands th, .run-hands td { padding: 8px 10px; text-align: right; }
+.run-hands thead th { color: var(--text-3); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.run-hands tbody th { text-align: left; font-weight: 600; }
+.run-hands tbody tr + tr th, .run-hands tbody tr + tr td { border-top: 1px solid var(--line); }
+.run-hands tbody tr[data-raised] { color: var(--plate); }
+
+/* A verse: one hand, raised for good. */
+.verse-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  width: 120px;
+  height: 168px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #16100a;
+  color: #f7d77e;
+  box-shadow: 0 12px 24px -12px rgba(20, 2, 8, 0.7);
+  text-align: center;
+}
+.verse-level { font-size: 13px; letter-spacing: 0.14em; color: #b8761c; }
+.verse-name { font-size: 17px; line-height: 0.95; }
+.verse-figures { font-size: 22px; color: #fff3c4; }
+
+/* ══════════════════════════════════════════════════
+   TURN YOUR PHONE
+   ══════════════════════════════════════════════════ */
+
+.rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 32px;
+  text-align: center;
+  background:
+    linear-gradient(160deg, #561430 0%, #36101e 34%, #2a0915 62%, var(--bg) 100%);
+}
+.rotate-mark { margin-bottom: 4px; }
+.rotate-phone { color: var(--plate); animation: tip 2.6s var(--ease-out) infinite; }
+.rotate h1 { font-size: clamp(2rem, 9vw, 2.8rem); }
+.rotate p { max-width: 34ch; color: var(--text-2); font-size: 15px; }
+@keyframes tip {
+  0%, 55% { transform: rotate(0deg); }
+  72%, 92% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ══════════════════════════════════════════════════
+   A PHONE ON ITS SIDE
+   Keyed off HEIGHT, not width. A landscape phone is
+   844 × 390: wider than every width breakpoint and
+   less than half the height the table was built for,
+   which is why it used to render a desktop layout
+   1,472 pixels tall inside a 390-pixel window.
+
+   One screen, no scrolling, everything sized off the
+   viewport's own height.
+   ══════════════════════════════════════════════════ */
+
+@media (max-height: 560px) and (orientation: landscape) {
+  html, body { height: 100%; overflow: hidden; }
+
+  .app { height: 100dvh; gap: 6px; padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .stage { flex: 1; min-height: 0; display: flex; }
+
+  /* The top bar becomes a strip: the mark, where you are, the ink, the tools. */
+  .topbar { min-height: 0; gap: 8px; padding: 5px 10px; border-radius: 14px; flex-wrap: nowrap; }
+  .brand-name { font-size: 1.05rem; }
+  .brand-sub, .who { display: none; }
+  .back { width: 30px; height: 30px; }
+  .icon-btn { width: 30px; height: 30px; }
+  .topbar-mid { margin-left: 8px; gap: 6px; }
+  .pill-solid { height: 22px; padding: 0 9px; font-size: 11px; }
+  .pill-quiet { height: 22px; padding: 0 9px; font-size: 10.5px; }
+  .ink { height: 30px; padding: 0 10px 0 7px; font-size: 13px; border-radius: 10px; }
+  .ink-label { display: none; }
+
+  /* The table: a narrow rail of figures, then the felt. */
+  .floor { flex: 1; min-height: 0; grid-template-columns: 168px minmax(0, 1fr); gap: 8px; }
+  .panel { min-height: 0; height: 100%; gap: 7px; padding: 10px; border-radius: 14px; overflow: hidden; }
+  .panel-head h2 { font-size: 1.05rem; }
+  .panel-head .pill-quiet { display: none; }
+  .panel-ask { font-size: 10.5px; gap: 4px; }
+  .panel-ask strong { font-size: 20px; }
+  .panel-score { padding: 7px 9px; gap: 2px; border-radius: 11px; }
+  .panel-total { font-size: 30px; }
+  .panel-label { font-size: 10px; }
+  .panel-bar { height: 4px; margin-top: 2px; }
+  .panel-hand { padding: 7px 9px; gap: 5px; border-radius: 11px; }
+  .panel-handname { font-size: 12px; min-height: 0; }
+  .figure { height: 38px; font-size: 21px; border-radius: 9px; }
+  .figure-times { font-size: 15px; }
+  .panel-figurelabels { font-size: 9.5px; }
+  .panel-counts { gap: 6px; }
+  .panel-counts > div { padding: 6px 9px; border-radius: 11px; }
+  .panel-counts span.poster { font-size: 22px; }
+  .warden-note { padding: 5px 8px; font-size: 10.5px; }
+
+  .table { min-height: 0; height: 100%; padding: 8px 10px; border-radius: 14px; display: flex; flex-direction: column; }
+  .table-quota, .table-quota-plate { font-size: 190px; top: -22%; }
+  .table-label { font-size: 9.5px; letter-spacing: 0.1em; }
+
+  /* Cards are sized off the viewport's height, which is the scarce axis. */
+  .card { width: calc(var(--h) * 0.72); height: var(--h); border-radius: 7px; --h: 23dvh; }
+  .card-pip-ink { left: 26%; top: 48%; width: 42%; height: 42%; }
+  .card-pip-plate { left: 30%; top: 52%; width: 42%; height: 42%; }
+  .card-corner { left: 5px; top: 3px; width: 17px; gap: 1px; }
+  .card-rank { font-size: 15px; }
+  .card-corner svg { width: 9px; height: 9px; }
+  .card-stamp { font-size: 7.5px; right: 4px; top: 4px; }
+
+  .book { gap: 5px; margin-top: 4px; }
+  .book-empty { width: calc(16dvh * 0.72); height: 16dvh; border-radius: 7px; }
+  .book .card { --h: 16dvh; }
+  .sigil-art { height: 55%; }
+  .sigil-num { font-size: 30px; }
+  .sigil-name { font-size: 11px; }
+  .sigil-tier { font-size: 6.5px; letter-spacing: 0.1em; }
+  .sigil-copy { left: 5px; right: 4px; bottom: 5px; gap: 1px; }
+  .sigil-note { top: auto; bottom: calc(100% + 6px); width: 190px; padding: 8px 10px; }
+  .sigil-note-head .poster { font-size: 15px; }
+  .sigil-note p { font-size: 11.5px; }
+
+  .played { min-height: 0; margin: 4px 0 0; gap: 7px; flex: 0 0 auto; }
+  .played .card { --h: 22dvh; }
+  .pop { top: -26px; padding: 3px 8px; font-size: 14px; }
+  .readout { margin: 2px 0 0; gap: 0; }
+  .readout-total { font-size: 38px; }
+  .readout-plate { left: 3px; top: 3px; }
+  .readout-sum { font-size: 10.5px; }
+
+  .hand { min-height: 0; margin-top: auto; align-items: flex-end; --bow: 0.5px; padding-bottom: 4px; }
+  .hand .card { --h: 25dvh; }
+  .hand-card { width: calc(25dvh * 0.72); margin-inline: calc(25dvh * -0.13); }
+  .hand-card.is-picked { transform: translateY(calc(var(--lift) - 18px)) rotate(var(--turn)); }
+  .hand-card:hover:not(:disabled) { transform: translateY(calc(var(--lift) - 6px)) rotate(var(--turn)); }
+
+  .deck-stack { display: none; }
+
+  .controls { margin-top: 5px; gap: 7px; }
+  .btn { height: 36px; padding: 0 16px; font-size: 13px; border-radius: 11px 4px 11px 4px; }
+  .sorter { height: 36px; border-radius: 11px 4px 11px 4px; }
+  .sorter > span { display: none; }
+  .sorter button { padding: 0 11px; font-size: 12px; }
+  .controls-note { font-size: 11px; }
+
+  /* Choosing a seal, and the margin, both become one screen too. */
+  .choose { min-height: 0; height: 100%; grid-template-columns: 200px minmax(0, 1fr); gap: 10px; align-items: stretch; }
+  .choose-head { padding: 12px; gap: 6px; border-radius: 14px; overflow: hidden; }
+  .choose-head h1 { font-size: 1.5rem; }
+  .choose-head p { font-size: 11px; }
+  .choose-tokens li { padding: 5px 8px; font-size: 10.5px; }
+  .seals { gap: 8px; align-items: stretch; }
+  .seal { min-height: 0; padding: 10px 9px 12px; gap: 5px; border-radius: 14px; }
+  .seal.is-now { transform: none; }
+  .seal-state { font-size: 10px; }
+  .seal-name { font-size: 0.95rem; }
+  .seal-disc { width: 52px; height: 52px; margin: 0; }
+  .seal-disc .poster { font-size: 20px; }
+  .seal-ask { font-size: 10px; }
+  .seal-ask strong { font-size: 22px; }
+  .seal-reward { font-size: 10px; }
+  .seal-rule { padding: 5px 8px; font-size: 10px; }
+  .seal-or { font-size: 10px; }
+  .seal-refuse-note { font-size: 9.5px; }
+
+  .margin { grid-template-columns: 150px minmax(0, 1fr) 0; grid-template-areas: "side stock stock" "side book book"; gap: 8px; padding: 9px; height: 100%; overflow-y: auto; }
+  .margin-deck { display: none; }
+  .margin-sign { padding: 8px; }
+  .margin-sign .poster { font-size: 1.15rem; }
+  .margin-sub, .margin-where { display: none; }
+  .margin-ink { padding: 6px 10px; }
+  .margin-ink .poster { font-size: 1.25rem; }
+  .rack { padding: 14px 10px 8px; gap: 8px; border-radius: 12px; }
+  .rack-sigils { min-height: 0; }
+  .ware { width: calc(17dvh * 0.72); padding-top: 11px; gap: 4px; }
+  .ware .card, .leaf, .rite-card, .verse-card { --h: 17dvh; width: calc(17dvh * 0.72); height: 17dvh; }
+  .ware-price { height: 19px; padding: 0 8px; font-size: 11px; }
+  .ware-note { font-size: 9px; }
+  .leaf-seal { font-size: 24px; }
+  .leaf-label { font-size: 10px; bottom: 7px; }
+  .covenant { min-height: 0; padding: 10px; }
+  .covenant-name { font-size: 0.95rem; }
+  .margin-book { padding: 8px 10px; gap: 4px; }
+  .held .card { --h: 15dvh; }
+  .held-acts button { height: 20px; font-size: 9.5px; }
+
+  /* Anything that opens over the table has to fit inside it. */
+  .sheet { padding: 14px; gap: 10px; max-height: 92dvh; overflow-y: auto; }
+  .sheet h2 { font-size: 1.5rem; }
+  .sheet p, .sheet-sub, .sheet-note { font-size: 11.5px; }
+  .sheet-rows > div { padding: 5px 0; font-size: 12px; }
+  .leaf-choices { gap: 10px; }
+  .leaf-choice { width: calc(20dvh * 0.72); gap: 5px; }
+  .leaf-choice .card, .leaf-choice .rite-card, .leaf-choice .verse-card { --h: 20dvh; width: calc(20dvh * 0.72); height: 20dvh; }
+  .leaf-choice-note { font-size: 9.5px; }
+  .deck-grid { max-height: 34dvh; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 5px; padding: 7px; }
+  .deck-cell .card { width: 46px; height: 64px; border-radius: 5px; }
+  .deck-cell .card-rank { font-size: 12px; }
+  .deck-cell .card-corner { left: 3px; top: 2px; width: 12px; }
+  .deck-cell .card-corner svg { width: 7px; height: 7px; }
+  .deck-cell .card-stamp { display: none; }
+  .run-sheet { max-height: 92dvh; }
+  .run-head h2 { font-size: 1.4rem; }
+  .run-hands th, .run-hands td { padding: 4px 7px; font-size: 11.5px; }
+  .toast { bottom: 10px; padding: 8px 14px; font-size: 12px; }
+}
+
+/* A touch screen has no hover, so the lift on a card is a lie that leaves it
+   stuck up after a tap. */
+@media (hover: none) {
+  .hand-card:hover:not(:disabled) { transform: translateY(var(--lift)) rotate(var(--turn)); }
+  .ware-art:hover:not(:disabled) { transform: none; }
+  .leaf-choice:hover, .deck-cell:hover, .book-slot:hover { transform: none; }
+  .cabinet > a:hover { transform: none; }
+}
+
+/* A hand the run has raised says so, next to its name. */
+.hand-level {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #16100a;
+  color: #f7d77e;
+  font-size: 11px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}

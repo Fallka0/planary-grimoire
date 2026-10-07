@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, BookOpen, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import { CHAPTERS, SEAL_NAME, type SealKind } from "@/game/seals";
 import { sfx } from "@/lib/audio";
+import { fullscreenAvailable, toggleFullscreen, useFullscreen } from "@/lib/device";
 import { buildAuthUrl } from "@/lib/auth";
 import { absorbSessionFromHash, loadSession } from "@/lib/session";
 
@@ -74,7 +75,27 @@ function Mute() {
   );
 }
 
-export function TopBar({ chapter, kind, ink }: { chapter?: number; kind?: SealKind; ink?: number }) {
+/** Fullscreen, where the browser allows it. iPhone Safari does not. */
+function Expand() {
+  const on = useFullscreen();
+  const [can, setCan] = useState(false);
+  useEffect(() => setCan(fullscreenAvailable()), []);
+  if (!can) return null;
+  return (
+    <button
+      type="button"
+      className="icon-btn"
+      aria-pressed={on}
+      aria-label={on ? "Leave fullscreen" : "Go fullscreen"}
+      title={on ? "Leave fullscreen" : "Fullscreen"}
+      onClick={() => void toggleFullscreen()}
+    >
+      {on ? <Minimize2 size={17} strokeWidth={1.9} aria-hidden="true" /> : <Maximize2 size={17} strokeWidth={1.9} aria-hidden="true" />}
+    </button>
+  );
+}
+
+export function TopBar({ chapter, kind, ink, onRun }: { chapter?: number; kind?: SealKind; ink?: number; onRun?: () => void }) {
   return (
     <header className="topbar">
       <a href={CASINO_URL} className="back" aria-label="Back to Planary Casino">
@@ -109,6 +130,12 @@ export function TopBar({ chapter, kind, ink }: { chapter?: number; kind?: SealKi
           <span className="ink-label">ink</span>
         </span>
       ) : null}
+      {onRun ? (
+        <button type="button" className="icon-btn" onClick={onRun} aria-label="This run: your deck, your book, the hands" title="This run (R)">
+          <BookOpen size={17} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+      ) : null}
+      <Expand />
       <Mute />
       <Who />
     </header>

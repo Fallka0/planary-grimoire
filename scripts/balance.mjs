@@ -159,7 +159,7 @@ check("The Climb leaves an ace where it is", rites.workRite(deck, climb, [ace.id
 console.log("\nLeaves");
 for (const spec of leaves.LEAF_KINDS) {
   const contents = leaves.fillLeaf(spec.kind, new rng.Rng("LEAF"), []);
-  const held = contents.sigils ?? contents.cards ?? contents.rites ?? [];
+  const held = contents.sigils ?? contents.cards ?? contents.rites ?? contents.verses ?? [];
   check(`${spec.name} holds ${spec.shown}`, held.length === spec.shown, String(held.length));
 }
 check("a sigil leaf never offers what is already in the book", leaves.fillLeaf("sigil", new rng.Rng("X"), sigils.SIGILS.map((s) => s.id)).sigils.length === 0);
@@ -179,6 +179,32 @@ check("and takes a token for it", walked.run.tokens.length === 1 || walked.token
 check("no ink is paid for a seal you did not break", walked.token === "ink" ? walked.run.ink > refusing.ink : walked.run.ink === refusing.ink);
 let atWarden = { ...refusing, seal: 2 };
 check("a warden cannot be refused", !run.canRefuse(atWarden));
+
+console.log("\nHand levels");
+check("every hand starts at one", hands.levelOf({}, "Pair") === 1 && hands.levelOf(undefined, "Flush") === 1);
+const pair1 = hands.levelled("Pair", 1);
+const pair2 = hands.levelled("Pair", 2);
+check("level one is the printed figure", pair1.points === hands.HAND_LEVELS.Pair.points && pair1.mult === hands.HAND_LEVELS.Pair.mult);
+check("a level adds exactly one step", pair2.points === pair1.points + hands.HAND_STEPS.Pair.points && pair2.mult === pair1.mult + hands.HAND_STEPS.Pair.mult);
+check("and it keeps adding", hands.levelled("Pair", 4).points === pair1.points + hands.HAND_STEPS.Pair.points * 3);
+check("a raised hand really scores more", (() => {
+  const played = hand("KS", "KH", "2C");
+  const flat = score.resolve({ played, sigils: [], handsLeft: 3, discardsLeft: 3, handNumber: 1 });
+  const up = score.resolve({ played, sigils: [], handsLeft: 3, discardsLeft: 3, handNumber: 1, levels: { Pair: 3 } });
+  return up.total > flat.total && up.level === 3;
+})());
+// The panel reads both figures off the preview, so the preview has to be the
+// levelled base and not the printed one — reading points from the table while
+// mult came from here is exactly how they once disagreed on screen.
+const seen = score.preview({ played: hand("KS", "KH", "2C"), sigils: [], handsLeft: 3, discardsLeft: 3, handNumber: 1, levels: { Pair: 2 } });
+const base2 = hands.levelled("Pair", 2);
+check("the preview shows the levelled base, both figures", seen.points === base2.points && seen.mult === base2.mult && seen.level === 2, `${seen.points} x ${seen.mult}`);
+let levelling = run.newRun("plain", "LEVELS");
+levelling = run.raiseHand(levelling, "Flush");
+levelling = run.raiseHand(levelling, "Flush");
+check("a run remembers what it has raised", levelling.levels.Flush === 3, JSON.stringify(levelling.levels));
+const verseLeaf = leaves.fillLeaf("verse", new rng.Rng("VERSE"), []);
+check("a verse leaf offers three different hands", verseLeaf.verses.length === 3 && new Set(verseLeaf.verses).size === 3, String(verseLeaf.verses));
 
 console.log("\nA run, played by a robot");
 // The robot is deliberately simple: it plays the best hand it can see from the

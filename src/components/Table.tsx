@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { formatMult, formatNumber } from "@/game/cards";
-import { HAND_LEVELS } from "@/game/hands";
 import { SEAL_NAME, wardenNote } from "@/game/seals";
 import type { Sigil } from "@/game/sigils";
 import { MAX_SELECT } from "@/game/run";
@@ -47,7 +46,17 @@ function Book({ game }: { game: Run }) {
           onMouseEnter={() => setOpen(i)}
           onMouseLeave={() => setOpen((current) => (current === i ? null : current))}
         >
-          <SigilCard sigil={sigil} />
+          {/* Tappable as well as hoverable: without a mouse there is otherwise
+              no way at all to read what your own sigils do. */}
+          <button
+            type="button"
+            className="book-press"
+            aria-expanded={open === i}
+            aria-label={`${sigil.name}: ${sigil.note}`}
+            onClick={() => setOpen((current) => (current === i ? null : i))}
+          >
+            <SigilCard sigil={sigil} />
+          </button>
           {firing === sigil.id && game.beat ? <Pop label={game.beat.event.label} kind={game.beat.event.kind} /> : null}
           {open === i ? <SigilNote sigil={sigil} /> : null}
         </div>
@@ -93,9 +102,12 @@ export function Table({ game }: { game: Run }) {
     .filter((id) => round.zone[id] === "play")
     .map((id) => run.cards.find((card) => card.id === id))
     .filter((card): card is NonNullable<typeof card> => Boolean(card));
-  const level = game.look ? HAND_LEVELS[game.look.hand] : null;
-  const points = game.running?.points ?? level?.points ?? 0;
-  const mult = game.running?.mult ?? (game.look ? game.look.mult : 0);
+  // Both figures come off the same preview, which already knows what level the
+  // run has raised this hand to. Reading points from the unlevelled table and
+  // mult from the preview is how they came to disagree.
+  const points = game.running?.points ?? game.look?.points ?? 0;
+  const mult = game.running?.mult ?? game.look?.mult ?? 0;
+  const level = game.tally?.level ?? game.look?.level ?? 1;
   const progress = Math.min(100, (round.score / round.quota) * 100);
   const scoringIds = new Set((game.tally?.scoring ?? []).map((card) => card.id));
 
@@ -121,7 +133,10 @@ export function Table({ game }: { game: Run }) {
         </div>
 
         <div className="panel-hand">
-          <span className="panel-handname">{game.tally?.hand ?? game.look?.hand ?? " "}</span>
+          <span className="panel-handname">
+            {game.tally?.hand ?? game.look?.hand ?? " "}
+            {(game.tally || game.look) && level > 1 ? <em className="hand-level poster">Lvl {level}</em> : null}
+          </span>
           <div className="panel-figures">
             <span className="figure figure-points poster num">{formatNumber(points)}</span>
             <span className="figure-times poster">×</span>
@@ -194,7 +209,10 @@ export function Table({ game }: { game: Run }) {
                 className={`hand-card${picked ? " is-picked" : ""}${delay !== undefined ? " is-dealing" : ""}`}
                 style={
                   {
-                    "--lift": `${offset * offset * 1.8}px`,
+                    // The curve is kept unitless so the stylesheet can flatten
+                    // the fan on a short screen, where cards hanging below the
+                    // row would sit on top of the controls.
+                    "--curve": offset * offset,
                     "--turn": `${offset * 2}deg`,
                     "--delay": `${delay ?? 0}ms`,
                     zIndex: 20 + i,

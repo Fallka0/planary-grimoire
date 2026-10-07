@@ -49,6 +49,43 @@ export const HAND_LEVELS: Record<HandName, HandLevel> = {
   "Straight flush": { points: 96, mult: 8 },
 };
 
+/**
+ * What one level adds to a hand, for good.
+ *
+ * Levels are the shop's second axis. Sigils make a *particular hand* you happen
+ * to hold pay more; a level makes a *kind of hand* pay more every time you ever
+ * play it again. The steps are deliberately steeper on the hands nobody builds
+ * around — two pair gains more per level than a flush does — so raising a hand
+ * you were ignoring is a real way to decide what your deck is about, rather
+ * than a tax on already playing the best hand you can.
+ */
+export const HAND_STEPS: Record<HandName, HandLevel> = {
+  "High card": { points: 10, mult: 1 },
+  Pair: { points: 15, mult: 1 },
+  "Two pair": { points: 20, mult: 2 },
+  "Three of a kind": { points: 20, mult: 2 },
+  Straight: { points: 30, mult: 3 },
+  Flush: { points: 25, mult: 2 },
+  "Full house": { points: 25, mult: 2 },
+  "Four of a kind": { points: 30, mult: 3 },
+  "Straight flush": { points: 40, mult: 4 },
+};
+
+/** Levels a run holds, by hand. Anything absent is still at one. */
+export type HandLevels = Partial<Record<HandName, number>>;
+
+export function levelOf(levels: HandLevels | undefined, name: HandName): number {
+  return Math.max(1, levels?.[name] ?? 1);
+}
+
+/** What a hand is worth at the level this run has raised it to. */
+export function levelled(name: HandName, level: number): HandLevel {
+  const base = HAND_LEVELS[name];
+  const step = HAND_STEPS[name];
+  const up = Math.max(0, level - 1);
+  return { points: base.points + step.points * up, mult: base.mult + step.mult * up };
+}
+
 /** Best to worst, for the collection screen and the hand book. */
 export const HAND_ORDER: HandName[] = [
   "Straight flush",

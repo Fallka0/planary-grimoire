@@ -2,15 +2,18 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense, useEffect } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { DECK_BY_ID, type DeckId } from "@/game/decks";
 import { CHAPTERS } from "@/game/seals";
 import { OpenLeaf } from "@/components/OpenLeaf";
+import { Rotate } from "@/components/Rotate";
+import { RunSheet } from "@/components/RunSheet";
 import { SealSelect } from "@/components/SealSelect";
 import { Shop } from "@/components/Shop";
 import { Table } from "@/components/Table";
 import { TopBar } from "@/components/TopBar";
 import { armAudio } from "@/lib/audio";
+import { useDevice } from "@/lib/device";
 import { useRun } from "@/lib/useRun";
 
 /**
@@ -30,12 +33,71 @@ function Run() {
   const fresh = params.get("new") === "1";
   const deck = (DECK_BY_ID.has(asked as DeckId) ? (asked as DeckId) : "plain") as DeckId;
   const game = useRun(fresh || asked ? { deck, seed: params.get("seed") ?? undefined } : undefined);
+  const device = useDevice();
+  const [sheet, setSheet] = useState(false);
+  const closeSheet = useCallback(() => setSheet(false), []);
 
+  /**
+   * Keyboard play.
+   *
+   * Digits pick cards out of the fan in the order they are lying, which is the
+   * order you read them, so the hand can be built without the mouse ever
+   * leaving the table.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "SELECT" || target.isContentEditable)) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.key === "Escape") {
+        setSheet(false);
+        if (game.leaf) game.closeLeaf();
+        return;
+      }
+      if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        setSheet((open) => !open);
+        return;
+      }
+      if (sheet || game.leaf) return;
+
+      if (game.phase === "choosing") {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          game.chooseSeal();
+        }
+        return;
+      }
+      if (game.phase !== "picking") return;
+
+      if (/^[1-9]$/.test(event.key)) {
+        const card = game.inHand[Number(event.key) - 1];
+        if (card) {
+          event.preventDefault();
+          game.toggle(card.id);
+        }
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        game.play();
+      }
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        game.discard();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [game, sheet]);
+
+  if (device.upright) return <Rotate />;
   if (!game.run) return <div className="loading">Opening the book…</div>;
 
   return (
     <div className="app">
-      <TopBar chapter={game.run.chapter} kind={game.kind} ink={game.run.ink} />
+      <TopBar chapter={game.run.chapter} kind={game.kind} ink={game.run.ink} onRun={() => setSheet(true)} />
       {game.phase === "choosing" ? (
         <main className="stage">
           <SealSelect game={game} />
@@ -71,6 +133,7 @@ function Run() {
           <Table game={game} />
         </main>
       )}
+      {sheet ? <RunSheet game={game} onClose={closeSheet} /> : null}
       {game.leaf ? <OpenLeaf game={game} /> : null}
       {game.note ? (
         <p className="toast" role="status">

@@ -40,6 +40,9 @@ Between seals you are in **the margin**, which stocks four kinds of thing:
   asks what your book should do, a **card leaf** what your deck should be made
   of, and a **rite leaf** which cards deserve the ink. You are always shown more
   than you may keep.
+- **Verses** raise one hand's base points and mult for the rest of the run. A
+  pair at level three is a different deck to a pair at level one, so a verse is
+  how an unloved hand becomes a deliberate build rather than a fallback.
 - **Rites** are the one-shot workings inside a rite leaf. A sigil changes how a
   hand is *scored*; a rite changes the cards themselves, once, for the rest of
   the run — marking them, turning them to a suit, or raising their rank. Taking
@@ -88,6 +91,8 @@ carry cosmetics: the **Bookbinder** title, the **Sigil** card back, and the
 | `src/game/covenants.ts` | The standing agreements, and every number they move |
 | `src/game/tokens.ts` | What walking away from a seal is worth |
 | `src/lib/audio.ts` | The sound, synthesised — no audio files anywhere |
+| `src/lib/device.ts` | What the thing in your hands can do: touch, height, which way up |
+| `src/components/RunSheet.tsx` | Your deck, your book and the hand ladder, a button away |
 | `scripts/balance.mjs` | Plays the book, so the numbers are checked rather than hoped for |
 
 `score.ts` returns a list of events, not a total. The table replays that list
@@ -99,6 +104,33 @@ A played hand is also **laid out as the hand it is**: pairs and sets group
 together, a straight runs low to high, and whatever does not score is pushed to
 the end. Five cards in the order you happened to pick them up say nothing; the
 same five grouped say "full house" before you have finished looking.
+
+## On a phone
+
+Grimoire is landscape-only on a phone, and says so: a fan of eight cards, the
+running figures and a row of sigils all have to be visible while you decide,
+and that does not fit a 390-pixel column. Portrait gets a rotate screen rather
+than a cramped half-game.
+
+The layout is keyed off **height**, not width, which is the thing width-based
+breakpoints get wrong about phones: a handset on its side is 844 × 390 — wider
+than any "mobile" breakpoint and less than half the height a card table was
+drawn for. Under `(max-height: 560px)` the whole game becomes one screen with
+no scrolling at all, the side panel becomes a rail of figures, and every card
+is sized off the viewport's own height rather than a fixed pixel count.
+
+It behaves like a game rather than a page: scrolling and rubber-banding are
+off, double-tap zoom is off, the notch's insets are honoured (in landscape it
+eats the edge the panel lives on), there is a fullscreen button where the
+browser allows one, and selecting, playing and breaking a seal each give a
+short haptic tap. Sigils can be *tapped* as well as hovered, because without a
+mouse there was otherwise no way to read what your own book does.
+
+## At a keyboard
+
+`1`–`8` pick cards out of the fan in the order they are lying, `Enter` plays
+(and opens a seal from the choosing screen), `Backspace` discards, `R` opens
+the run sheet and `Esc` closes whatever is open.
 
 ## Sound
 

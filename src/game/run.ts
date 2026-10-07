@@ -10,6 +10,7 @@
  */
 
 import { type Card, type CardId } from "./cards";
+import type { HandLevels, HandName } from "./hands";
 import { COVENANTS, type Covenant, type CovenantId, shaped } from "./covenants";
 import { buildDeck, DECK_BY_ID, type Deck, type DeckId } from "./decks";
 import { fillLeaf, LEAF_KINDS, type LeafContents, type LeafKind } from "./leaves";
@@ -42,6 +43,8 @@ export interface RunState {
   cursor: number;
   /** Every sigil this player has ever seen, for the collection. */
   seen: string[];
+  /** How far each hand has been raised. Anything absent is still at one. */
+  levels: HandLevels;
   /** Standing agreements, kept for the rest of the run. */
   covenants: CovenantId[];
   /** Tokens taken for refusing a seal, spent on the next shop. */
@@ -95,6 +98,7 @@ export function newRun(deckId: DeckId, seed = newSeed()): RunState {
     cards: buildDeck(deck),
     cursor: rng.cursor,
     seen: [],
+    levels: {},
     covenants: [],
     tokens: [],
     refused: [],
@@ -380,6 +384,11 @@ export function signCovenant(run: RunState, covenant: Covenant): RunState {
 /** Adds a card to the run's deck. */
 export function addCard(run: RunState, card: Card): RunState {
   return { ...run, cards: [...run.cards, card] };
+}
+
+/** Raises a hand a level, for the rest of the run. */
+export function raiseHand(run: RunState, name: HandName): RunState {
+  return { ...run, levels: { ...run.levels, [name]: Math.max(1, run.levels[name] ?? 1) + 1 } };
 }
 
 /** Replaces the deck wholesale, after a rite has been worked on it. */

@@ -21,7 +21,7 @@
  */
 
 import { type Card, MARKS, pointsOf } from "./cards";
-import { evaluate, HAND_LEVELS, type HandName } from "./hands";
+import { evaluate, type HandLevels, levelled, levelOf, type HandName } from "./hands";
 import { baseMultUnder, scoringUnder, sigilsSealed, totalUnder, type WardenRule } from "./seals";
 import type { Effect, FireContext, Sigil } from "./sigils";
 
@@ -40,6 +40,8 @@ export interface ScoreEvent {
 
 export interface Resolution {
   hand: HandName;
+  /** The level the hand was scored at. */
+  level: number;
   /** Every played card, laid out so the hand reads as what it is. */
   arranged: Card[];
   scoring: Card[];
@@ -64,6 +66,8 @@ export interface ScoreInput {
   handNumber: number;
   /** The warden's rule, when one is in force. */
   warden?: WardenRule | null;
+  /** How far this run has raised each hand. */
+  levels?: HandLevels;
 }
 
 export function resolve(input: ScoreInput): Resolution | null {
@@ -76,7 +80,7 @@ export function resolve(input: ScoreInput): Resolution | null {
   const scoring = scoringUnder(rule, evaluation.scoring);
   const sealed = sigilsSealed(rule, input.handNumber);
 
-  const level = HAND_LEVELS[evaluation.name];
+  const level = levelled(evaluation.name, levelOf(input.levels, evaluation.name));
   let points = level.points;
   let mult = baseMultUnder(rule, level.mult);
   const events: ScoreEvent[] = [];
@@ -145,7 +149,7 @@ export function resolve(input: ScoreInput): Resolution | null {
   }
 
   const total = totalUnder(rule, input.handNumber, Math.floor(points * mult));
-  return { hand: evaluation.name, arranged: evaluation.arranged, scoring, events, points, mult, total };
+  return { hand: evaluation.name, level: levelOf(input.levels, evaluation.name), arranged: evaluation.arranged, scoring, events, points, mult, total };
 }
 
 function labelOf(effect: Effect): string {
@@ -161,12 +165,12 @@ function labelOf(effect: Effect): string {
  * picked up and put down. It is the same function the real play uses, which is
  * the only way the preview can be trusted to agree with the result.
  */
-export function preview(input: ScoreInput): { hand: HandName; points: number; mult: number } | null {
+export function preview(input: ScoreInput): { hand: HandName; level: number; points: number; mult: number } | null {
   const resolution = resolve(input);
   if (!resolution) return null;
-  const level = HAND_LEVELS[resolution.hand];
+  const level = levelled(resolution.hand, levelOf(input.levels, resolution.hand));
   // The preview shows the hand's own figures, not the full sequence: the cards
   // have not been played, so nothing has fired yet. The warden's flattening of
   // the multiplier is shown, though, because that is true before you play.
-  return { hand: resolution.hand, points: level.points, mult: baseMultUnder(input.warden ?? null, level.mult) };
+  return { hand: resolution.hand, level: resolution.level, points: level.points, mult: baseMultUnder(input.warden ?? null, level.mult) };
 }
