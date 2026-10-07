@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Card, CardId } from "@/game/cards";
+import type { Card, CardId, Suit } from "@/game/cards";
+import { shaped } from "@/game/covenants";
 import type { DeckId } from "@/game/decks";
+import type { LeafContents } from "@/game/leaves";
+import { renumber, type Rite, workRite } from "@/game/rites";
 import { preview, resolve, type Resolution, type ScoreEvent } from "@/game/score";
 import { CHAPTERS, SEAL_ORDER } from "@/game/seals";
 import {
+  addCard,
+  addSigil,
   advance,
-  buy,
+  canRefuse,
   cardsLeft,
   deal,
   HAND_SIZE,
@@ -15,6 +20,7 @@ import {
   newRun,
   type Offer,
   payoutFor,
+  refuse,
   reorder,
   reroll,
   rollShop,
@@ -22,11 +28,15 @@ import {
   type RunState,
   sealKind,
   sell,
+  setDeck,
   type Shop,
+  signCovenant,
   sigilsOf,
+  spend,
   startSeal,
 } from "@/game/run";
 import type { Sigil } from "@/game/sigils";
+import { sfx } from "./audio";
 import { reportRun, type Unlocked } from "./casino";
 
 /**
@@ -41,19 +51,33 @@ import { reportRun, type Unlocked } from "./casino";
 
 const SAVE_KEY = "grimoire:run";
 
-/** One beat of the scoring sequence, and how long a card takes to settle. */
-const BEAT_MS = 430;
-const DEAL_STAGGER_MS = 70;
-const SETTLE_MS = 1100;
+/**
+ * The clock.
+ *
+ * Deliberately unhurried. The scoring beat is the one number that decides
+ * whether a hand reads as arithmetic you can follow or as a fruit machine, and
+ * it is better slow than clever.
+ */
+const BEAT_MS = 560;
+const DEAL_STAGGER_MS = 95;
+const SETTLE_MS = 1300;
+const TALLY_HOLD_MS = 2100;
 
-export type Phase = "dealing" | "picking" | "scoring" | "tallied" | "broken" | "spent" | "shop" | "over" | "won";
+export type Phase = "choosing" | "dealing" | "picking" | "scoring" | "tallied" | "broken" | "shop" | "over" | "won";
+
+/** A leaf that has been bought and is open on the table. */
+export interface OpenLeaf {
+  offer: Offer;
+  contents: LeafContents;
+  /** Set once a rite has been picked and is waiting for the cards to work on. */
+  rite?: Rite;
+}
 
 interface Saved {
   run: RunState;
-  round: RoundState;
+  round: RoundState | null;
   phase: Phase;
   shop: Shop | null;
-  finished: DeckId[];
 }
 
 function load(): Saved | null {
@@ -81,7 +105,6 @@ export function clearSave() {
   }
 }
 
-/** Decks finished at least once, kept apart from the run so it survives losing. */
 const FINISHED_KEY = "grimoire:finished";
 
 export function finishedDecks(): DeckId[] {
@@ -92,33 +115,31 @@ export function finishedDecks(): DeckId[] {
   }
 }
 
-function recordFinish(deck: DeckId): DeckId[] {
-  const all = [...new Set([...finishedDecks(), deck])];
+function recordFinish(deck: DeckId): void {
   try {
-    window.localStorage.setItem(FINISHED_KEY, JSON.stringify(all));
+    window.localStorage.setItem(FINISHED_KEY, JSON.stringify([...new Set([...finishedDecks(), deck])]));
   } catch {
     // Nothing stored.
   }
-  return all;
 }
 
 export interface Beat {
   event: ScoreEvent;
-  /** A key that changes every beat, so the pop can be re-triggered. */
   key: string;
 }
 
 export function useRun(initial?: { deck: DeckId; seed?: string }) {
   const [run, setRun] = useState<RunState | null>(null);
   const [round, setRound] = useState<RoundState | null>(null);
-  const [phase, setPhase] = useState<Phase>("dealing");
+  const [phase, setPhase] = useState<Phase>("choosing");
   const [shop, setShop] = useState<Shop | null>(null);
+  const [leaf, setLeaf] = useState<OpenLeaf | null>(null);
   const [dealt, setDealt] = useState<Record<CardId, number>>({});
   const [beat, setBeat] = useState<Beat | null>(null);
   const [running, setRunning] = useState<{ points: number; mult: number } | null>(null);
   const [tally, setTally] = useState<Resolution | null>(null);
-  /** Badges the casino handed back when the book was finished. */
   const [unlocked, setUnlocked] = useState<Unlocked[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
 
   const after = useCallback((ms: number, fn: () => void) => {
@@ -131,48 +152,32 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
-  /** Opens a seal and deals the opening hand. */
-  const open = useCallback(
-    (state: RunState) => {
-      const started = startSeal(state);
-      const handed = deal(started.round, HAND_SIZE);
-      const delays: Record<CardId, number> = {};
-      handed.dealt.forEach((id, i) => (delays[id] = i * DEAL_STAGGER_MS));
-      setRun(started.run);
-      setRound(handed.round);
-      setDealt(delays);
-      setPhase("dealing");
-      setBeat(null);
-      setRunning(null);
-      setTally(null);
-      after(SETTLE_MS, () => {
-        setDealt({});
-        setPhase("picking");
-      });
-    },
-    [after],
-  );
+  useEffect(() => {
+    if (!note) return;
+    const timer = window.setTimeout(() => setNote(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [note]);
 
-  // Start: resume what was saved, or begin the deck we were sent here with.
+  // Start: resume what was saved, or begin the binding we were sent here with.
   useEffect(() => {
     const saved = load();
     if (saved?.run && !initial) {
       setRun(saved.run);
       setRound(saved.round);
-      setPhase(saved.phase === "scoring" || saved.phase === "dealing" ? "picking" : saved.phase);
       setShop(saved.shop);
+      setPhase(saved.phase === "scoring" || saved.phase === "dealing" ? "picking" : saved.phase);
       return;
     }
-    open(newRun(initial?.deck ?? "plain", initial?.seed));
+    setRun(newRun(initial?.deck ?? "plain", initial?.seed));
+    setPhase("choosing");
     // Only ever on mount: a run is opened once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save after every settled change, never mid-animation.
   useEffect(() => {
-    if (!run || !round) return;
+    if (!run) return;
     if (phase === "scoring" || phase === "dealing") return;
-    store({ run, round, phase, shop, finished: finishedDecks() });
+    store({ run, round, phase, shop });
   }, [run, round, phase, shop]);
 
   const sigils = useMemo(() => (run ? sigilsOf(run) : []), [run]);
@@ -188,11 +193,55 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     [round, byId],
   );
 
-  /** What the current selection would be named and based at. */
   const look = useMemo(() => {
     if (!round || !selected.length) return null;
-    return preview({ played: selected, sigils, handsLeft: round.hands, discardsLeft: round.discards, handNumber: round.handNumber, warden: round.warden });
+    return preview({
+      played: selected,
+      sigils,
+      handsLeft: round.hands,
+      discardsLeft: round.discards,
+      handNumber: round.handNumber,
+      warden: round.warden,
+    });
   }, [round, selected, sigils]);
+
+  /** Opens the chosen seal and deals the first hand. */
+  const openSeal = useCallback(
+    (state: RunState) => {
+      const started = startSeal(state);
+      const handed = deal(started.round, HAND_SIZE + shaped(state.covenants).handSize);
+      const delays: Record<CardId, number> = {};
+      handed.dealt.forEach((id, i) => (delays[id] = i * DEAL_STAGGER_MS));
+      setRun(started.run);
+      setRound(handed.round);
+      setDealt(delays);
+      setPhase("dealing");
+      setBeat(null);
+      setRunning(null);
+      setTally(null);
+      sfx.deal();
+      after(SETTLE_MS, () => {
+        setDealt({});
+        setPhase("picking");
+      });
+    },
+    [after],
+  );
+
+  const chooseSeal = useCallback(() => {
+    if (!run) return;
+    sfx.press();
+    openSeal(run);
+  }, [run, openSeal]);
+
+  /** Walks away from a seal and takes a token instead. */
+  const refuseSeal = useCallback(() => {
+    if (!run || !canRefuse(run)) return;
+    const { run: moved, token } = refuse(run);
+    sfx.token();
+    setRun(moved);
+    setNote(token === "ink" ? "Five ink, taken on the spot." : "Taken. It is spent at the next shop.");
+  }, [run]);
 
   const toggle = useCallback(
     (id: CardId) => {
@@ -201,23 +250,15 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
         if (!current || current.zone[id] !== "hand") return current;
         const has = current.selected.includes(id);
         if (!has && current.selected.length >= MAX_SELECT) return current;
+        sfx.tap();
         return { ...current, selected: has ? current.selected.filter((x) => x !== id) : [...current.selected, id] };
       });
     },
     [phase],
   );
 
-  /**
-   * Plays the selection.
-   *
-   * The whole hand is resolved here, once, before a single pixel moves. What
-   * follows is replay: each event is released on its own beat, and the running
-   * figures come straight off the event rather than being recomputed, so the
-   * panel and the final total can never disagree.
-   */
   const play = useCallback(() => {
     if (!run || !round || phase !== "picking" || !round.selected.length || round.hands <= 0) return;
-    // In the order they sit in the hand, so the pops run left to right.
     const played = inHand.filter((card) => round.selected.includes(card.id));
     const resolution = resolve({
       played,
@@ -231,27 +272,32 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
 
     const zone = { ...round.zone };
     played.forEach((card) => (zone[card.id] = "play"));
-    setRound({ ...round, zone, selected: [], playing: played.map((card) => card.id) });
+    // Laid out as the hand it is, so the pops run along something readable.
+    setRound({ ...round, zone, selected: [], playing: resolution.arranged.map((card) => card.id) });
     setPhase("scoring");
     setRunning({ points: 0, mult: 0 });
+    sfx.play();
 
-    let t = 520;
+    let t = 760;
     resolution.events.forEach((event, i) => {
       after(t, () => {
         setBeat({ event, key: `${i}-${event.cardId ?? event.sigilId}` });
         setRunning({ points: event.points, mult: event.mult });
+        if (event.kind === "points") sfx.point(i);
+        else sfx.mult(i);
       });
       t += BEAT_MS;
     });
 
-    after(t + 120, () => {
+    after(t + 200, () => {
       setBeat(null);
       setTally(resolution);
       setRound((current) => (current ? { ...current, score: current.score + resolution.total } : current));
+      sfx.total();
       setPhase("tallied");
     });
 
-    after(t + 1500, () => {
+    after(t + TALLY_HOLD_MS, () => {
       setTally(null);
       setRound((current) => {
         if (!current) return current;
@@ -259,16 +305,17 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
         played.forEach((card) => (gone[card.id] = "gone"));
         return { ...current, zone: gone, hands: current.hands - 1, handNumber: current.handNumber + 1 };
       });
-      after(380, () => {
+      after(480, () => {
         setRound((current) => {
           if (!current || !run) return current;
           if (current.score >= current.quota) {
+            sfx.win();
             setPhase("broken");
             return current;
           }
           if (current.hands <= 0 || cardsLeft(current) === 0) {
+            sfx.lose();
             setPhase("over");
-            // How far the book got still earns its badges.
             void reportRun({ deck: run.deck, seed: run.seed, chapter: run.chapter, won: false, sigils: run.sigils });
             return current;
           }
@@ -276,6 +323,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
           const delays: Record<CardId, number> = {};
           handed.dealt.forEach((id, i) => (delays[id] = i * DEAL_STAGGER_MS));
           setDealt(delays);
+          sfx.deal();
           after(SETTLE_MS, () => setDealt({}));
           setPhase("picking");
           return handed.round;
@@ -291,7 +339,8 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     round.selected.forEach((id) => (zone[id] = "gone"));
     setRound({ ...round, zone, selected: [], discards: round.discards - 1 });
     setPhase("scoring");
-    after(420, () => {
+    sfx.discard();
+    after(560, () => {
       setRound((current) => {
         if (!current) return current;
         if (cardsLeft(current) === 0 && current.hands > 0) {
@@ -302,6 +351,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
         const delays: Record<CardId, number> = {};
         handed.dealt.forEach((id, i) => (delays[id] = i * DEAL_STAGGER_MS));
         setDealt(delays);
+        sfx.deal();
         after(SETTLE_MS, () => setDealt({}));
         setPhase("picking");
         return handed.round;
@@ -311,16 +361,14 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
 
   const payout = useMemo(() => (run && round ? payoutFor(run, round) : null), [run, round]);
 
-  /** Takes the ink for a broken seal and opens the shop. */
   const collect = useCallback(() => {
     if (!run || !round || !payout) return;
+    sfx.coin();
     const moved = advance(run, payout.total);
     if (moved.won) {
       recordFinish(moved.deck);
       setRun(moved);
       setPhase("won");
-      // The casino keeps the badges. It is told after the win is on screen,
-      // never before: a slow network must not hold up the end of a run.
       void reportRun({ deck: moved.deck, seed: moved.seed, chapter: moved.chapter, won: true, sigils: moved.sigils }).then(setUnlocked);
       return;
     }
@@ -330,41 +378,113 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     setPhase("shop");
   }, [run, round, payout]);
 
+  /** Leaves the shop, back to choosing the next seal. */
   const leaveShop = useCallback(() => {
-    if (!run) return;
+    sfx.press();
     setShop(null);
-    open(run);
-  }, [run, open]);
+    setLeaf(null);
+    setRound(null);
+    setPhase("choosing");
+  }, []);
 
-  const purchase = useCallback(
-    (offer: Offer, chosen?: Sigil) => {
+  // ── Buying ────────────────────────────────────
+
+  const buyOffer = useCallback(
+    (offer: Offer) => {
       if (!run || !shop) return;
-      const next = buy(run, shop, offer, chosen);
-      setRun(next.run);
-      setShop(next.shop);
+      const paid = spend(run, shop, offer);
+      sfx.coin();
+
+      if (offer.kind === "sigil" && offer.sigil) {
+        setRun(addSigil(paid.run, offer.sigil));
+        setShop(paid.shop);
+        return;
+      }
+      if (offer.kind === "covenant" && offer.covenant) {
+        setRun(signCovenant(paid.run, offer.covenant));
+        setShop(paid.shop);
+        setNote(`Signed: ${offer.covenant.name.toLowerCase()}.`);
+        return;
+      }
+      if (offer.kind === "leaf" && offer.contents) {
+        setRun(paid.run);
+        setShop(paid.shop);
+        setLeaf({ offer, contents: offer.contents });
+        sfx.open();
+      }
     },
     [run, shop],
+  );
+
+  const closeLeaf = useCallback(() => setLeaf(null), []);
+
+  /** Keeps one thing out of an open leaf. A rite keeps the leaf open for its cards. */
+  const keepFromLeaf = useCallback(
+    (choice: { sigil?: Sigil; card?: Card; rite?: Rite }) => {
+      if (!run || !leaf) return;
+      if (choice.sigil) {
+        setRun(addSigil(run, choice.sigil));
+        setLeaf(null);
+        sfx.press();
+        return;
+      }
+      if (choice.card) {
+        setRun(addCard(run, choice.card));
+        setLeaf(null);
+        sfx.press();
+        return;
+      }
+      if (choice.rite) {
+        setLeaf({ ...leaf, rite: choice.rite });
+        sfx.tap();
+      }
+    },
+    [run, leaf],
+  );
+
+  /** Works the chosen rite on the chosen cards. */
+  const applyRite = useCallback(
+    (cards: readonly string[], suit?: Suit) => {
+      if (!run || !leaf?.rite) return;
+      const worked = renumber(workRite(run.cards, leaf.rite, cards, suit));
+      setRun(setDeck(run, worked));
+      setNote(`${leaf.rite.name} worked on ${cards.length} card${cards.length === 1 ? "" : "s"}.`);
+      setLeaf(null);
+      sfx.rite();
+    },
+    [run, leaf],
   );
 
   const again = useCallback(() => {
     if (!run || !shop) return;
     const next = reroll(run, shop);
     if (!next) return;
+    sfx.shuffle();
     setRun(next.run);
     setShop(next.shop);
   }, [run, shop]);
 
-  const sellSigil = useCallback((index: number) => setRun((current) => (current ? sell(current, index) : current)), []);
-  const moveSigil = useCallback((from: number, to: number) => setRun((current) => (current ? reorder(current, from, to) : current)), []);
+  const sellSigil = useCallback((index: number) => {
+    sfx.coin();
+    setRun((current) => (current ? sell(current, index) : current));
+  }, []);
+
+  const moveSigil = useCallback((from: number, to: number) => {
+    sfx.tap();
+    setRun((current) => (current ? reorder(current, from, to) : current));
+  }, []);
 
   const restart = useCallback(
     (deck: DeckId) => {
       clearTimers();
       clearSave();
       setShop(null);
-      open(newRun(deck));
+      setLeaf(null);
+      setRound(null);
+      setRun(newRun(deck));
+      setPhase("choosing");
     },
-    [clearTimers, open],
+    [clearTimers],
   );
 
   return {
@@ -372,7 +492,7 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     round,
     phase,
     shop,
-    unlocked,
+    leaf,
     sigils,
     inHand,
     selected,
@@ -382,17 +502,24 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
     running,
     tally,
     payout,
+    unlocked,
+    note,
     deckLeft: round ? cardsLeft(round) : 0,
     chapters: CHAPTERS,
-    sealIndex: run?.seal ?? 0,
     seals: SEAL_ORDER.length,
-    kind: run ? sealKind(run) : "lesser",
+    kind: run ? sealKind(run) : ("lesser" as const),
+    canRefuse: run ? canRefuse(run) : false,
+    chooseSeal,
+    refuseSeal,
     toggle,
     play,
     discard,
     collect,
     leaveShop,
-    purchase,
+    buyOffer,
+    closeLeaf,
+    keepFromLeaf,
+    applyRite,
     again,
     sellSigil,
     moveSigil,

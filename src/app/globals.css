@@ -312,7 +312,7 @@ ul, ol { padding: 0; list-style: none; }
 .panel-score { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--r-md); background: var(--layer-1); border: 1px solid var(--line); }
 .panel-total { font-size: 68px; line-height: 0.86; }
 .panel-bar { height: 6px; border-radius: 3px; background: var(--layer-3); overflow: hidden; margin-top: 4px; }
-.panel-bar i { display: block; height: 100%; border-radius: 3px; background: var(--cherry); transition: width 0.5s var(--ease-out); }
+.panel-bar i { display: block; height: 100%; border-radius: 3px; background: var(--cherry); transition: width 0.9s var(--ease-out); }
 
 .panel-hand { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--r-md); background: var(--layer-1); border: 1px solid var(--line); }
 .panel-handname { font-size: 17px; font-weight: 700; min-height: 26px; }
@@ -369,9 +369,9 @@ ul, ol { padding: 0; list-style: none; }
 
 /* The book: sigils in a row, left to right, in firing order. */
 .book { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
-.book-slot { position: relative; transition: transform 0.2s var(--ease-pop); }
+.book-slot { position: relative; transition: transform 0.3s var(--ease-pop); }
 .book-slot:hover { transform: translateY(-8px); }
-.book-slot.is-firing { animation: wobble 0.44s var(--ease-pop); }
+.book-slot.is-firing { animation: wobble 0.66s var(--ease-pop); }
 .book-empty { width: 120px; height: 168px; border-radius: 10px; border: 1.5px dashed rgba(251, 241, 234, 0.4); }
 
 @keyframes wobble {
@@ -394,7 +394,7 @@ ul, ol { padding: 0; list-style: none; }
   border: 1px solid var(--line-2);
   box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
   color: var(--text);
-  animation: lift-in 0.18s var(--ease-out);
+  animation: lift-in 0.26s var(--ease-out);
 }
 .sigil-note-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .sigil-note-head .poster { font-size: 22px; }
@@ -405,8 +405,8 @@ ul, ol { padding: 0; list-style: none; }
 
 /* The cards on the table, mid-hand. */
 .played { display: flex; justify-content: center; gap: 16px; min-height: 168px; margin: 28px 0 8px; }
-.played-card { position: relative; animation: lift-in 0.3s var(--ease-out); }
-.played-card.is-firing { animation: pop 0.34s var(--ease-pop); }
+.played-card { position: relative; animation: lift-in 0.46s var(--ease-out); }
+.played-card.is-firing { animation: pop 0.5s var(--ease-pop); }
 @keyframes pop {
   0% { transform: scale(1); }
   30% { transform: scale(1.14) rotate(-3deg); }
@@ -426,7 +426,7 @@ ul, ol { padding: 0; list-style: none; }
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-  animation: float-off 0.9s var(--ease-out) forwards;
+  animation: float-off 1.25s var(--ease-out) forwards;
 }
 .pop-points { background: var(--ink); color: var(--field); }
 .pop-mult, .pop-times { background: var(--cherry-fill); color: #fff; }
@@ -440,7 +440,7 @@ ul, ol { padding: 0; list-style: none; }
 }
 
 /* The total, printed off register, like the quota behind it. */
-.readout { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 12px; animation: lift-in 0.38s var(--ease-pop); }
+.readout { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 12px; animation: lift-in 0.6s var(--ease-pop); }
 .readout-total { position: relative; font-size: 86px; line-height: 0.82; }
 .readout-plate { position: absolute; left: 6px; top: 6px; color: var(--plate); }
 .readout-sum { font-size: 14px; font-weight: 600; color: var(--ink-2); }
@@ -452,12 +452,12 @@ ul, ol { padding: 0; list-style: none; }
   width: 120px;
   margin-inline: -16px;
   transform: translateY(var(--lift)) rotate(var(--turn));
-  transition: transform 0.18s var(--ease-out), margin 0.18s var(--ease-out);
+  transition: transform 0.26s var(--ease-out), margin 0.26s var(--ease-out);
 }
 .hand-card:hover:not(:disabled) { transform: translateY(calc(var(--lift) - 10px)) rotate(var(--turn)); z-index: 60 !important; }
 .hand-card.is-picked { transform: translateY(calc(var(--lift) - 34px)) rotate(var(--turn)); }
 .hand-card.is-picked .card { box-shadow: 0 0 0 3px var(--ink), 0 16px 28px -14px rgba(20, 2, 8, 0.8); }
-.hand-card.is-dealing { animation: deal 0.46s var(--ease-out) backwards; animation-delay: var(--delay); }
+.hand-card.is-dealing { animation: deal 0.72s var(--ease-out) backwards; animation-delay: var(--delay); }
 @keyframes deal {
   from { opacity: 0; transform: translate(220px, -180px) rotate(-12deg); }
   to { opacity: 1; transform: translateY(var(--lift)) rotate(var(--turn)); }
@@ -518,7 +518,7 @@ ul, ol { padding: 0; list-style: none; }
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: lift-in 0.42s var(--ease-pop);
+  animation: lift-in 0.56s var(--ease-pop);
 }
 .sheet h2 { font-size: 2.6rem; line-height: 0.95; }
 .sheet p { color: var(--text-2); }
@@ -531,70 +531,6 @@ ul, ol { padding: 0; list-style: none; }
 .pack-choice { display: flex; flex-direction: column; gap: 8px; align-items: center; width: 140px; transition: transform 0.18s var(--ease-out); }
 .pack-choice:hover { transform: translateY(-6px); }
 .pack-choice-note { font-size: 12.5px; color: var(--text-2); text-align: center; line-height: 1.35; }
-
-/* ── The shop ──────────────────────────────────── */
-
-.shop {
-  padding: 28px;
-  border-radius: var(--r-lg);
-  background: var(--field);
-  color: var(--ink);
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-.shop::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: radial-gradient(circle, var(--field-dot) 0 3.2px, transparent 3.6px) 0 0 / 14px 14px;
-  -webkit-mask-image: linear-gradient(180deg, transparent 40%, #000 100%);
-  mask-image: linear-gradient(180deg, transparent 40%, #000 100%);
-}
-.shop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-.shop-head h2 { font-size: 2.8rem; }
-.shop-head p { color: var(--ink-2); font-size: 14px; margin-top: 6px; }
-.shop-ink { font-size: 2.4rem; }
-.shop-warn { margin-bottom: 16px; font-size: 14px; color: var(--ink-2); }
-
-.shop-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-.offer { display: flex; gap: 16px; padding: 16px; border-radius: var(--r-md); background: rgba(251, 241, 234, 0.12); border: 1px solid rgba(251, 241, 234, 0.22); }
-.offer.is-sold { opacity: 0.5; }
-.offer-art { flex: none; }
-.offer-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.offer-name { font-size: 1.5rem; }
-.offer-copy p { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
-.offer-foot { display: flex; align-items: center; gap: 12px; margin-top: auto; }
-.price { font-weight: 700; font-size: 15px; }
-.price.is-short { opacity: 0.55; text-decoration: line-through; }
-.offer-sold { font-size: 1rem; letter-spacing: 0.1em; }
-/* Two backs at an angle need more room than one card: the rotation makes the
-   pair wider than the 120 a card reserves, and it was leaning on the title. */
-.pack { position: relative; display: block; width: 142px; height: 168px; }
-.pack .card { position: absolute; top: 0; }
-.pack .card:nth-child(1) { left: 4px; transform: rotate(-8deg); }
-.pack .card:nth-child(2) { left: 18px; transform: rotate(7deg); }
-.voucher { display: grid; place-items: center; width: 120px; height: 168px; border-radius: 10px; background: var(--ink); color: var(--field); font-size: 66px; }
-
-.shop-book { margin-top: 26px; }
-.shop-book .panel-label { color: var(--ink-2); }
-.shop-bookrow { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; align-items: flex-start; }
-.shop-held { display: flex; flex-direction: column; gap: 6px; }
-.shop-held-acts { display: flex; gap: 4px; }
-.shop-held-acts button {
-  flex: 1;
-  height: 28px;
-  border-radius: 8px;
-  background: rgba(251, 241, 234, 0.14);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-}
-.shop-held-acts button:hover:not(:disabled) { background: rgba(251, 241, 234, 0.28); }
-.shop-held-acts button:disabled { opacity: 0.35; }
-.shop-empty { color: var(--ink-2); font-size: 14px; }
-.shop-acts { display: flex; gap: 12px; justify-content: flex-end; margin-top: 26px; flex-wrap: wrap; }
 
 /* ── The shelf ─────────────────────────────────── */
 
@@ -773,3 +709,408 @@ ul, ol { padding: 0; list-style: none; }
 .who-signin:hover { background: var(--layer-2); color: var(--text); }
 .topbar .ink ~ .who { margin-left: 0; }
 .topbar .who:only-of-type { margin-left: auto; }
+
+/* ══════════════════════════════════════════════════
+   CHOOSING THE NEXT SEAL
+   All three of the chapter on the table at once: what
+   is spent, what is in front of you, and what is
+   coming — including the warden's rule, published
+   rather than sprung.
+   ══════════════════════════════════════════════════ */
+
+.choose {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+  min-height: calc(100dvh - 130px);
+}
+
+.choose-head { display: flex; flex-direction: column; gap: 14px; padding: 26px 24px; border-radius: var(--r-lg); background: var(--shell); border: 1px solid var(--line); }
+.choose-head h1 { font-size: clamp(2.4rem, 4vw, 3.4rem); line-height: 0.88; }
+.choose-head p { color: var(--text-2); font-size: 14.5px; }
+.choose-tokens { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.choose-tokens li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--field);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.choose-tokens .poster { font-size: 20px; }
+
+.seals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.seal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 460px;
+  padding: 22px 20px 26px;
+  border-radius: var(--r-lg);
+  background: var(--shell);
+  border: 1px solid var(--line);
+  text-align: center;
+  transition: transform 0.3s var(--ease-out), border-color 0.3s ease, opacity 0.3s ease;
+}
+.seal.is-done, .seal.is-refused { opacity: 0.45; }
+.seal.is-ahead { opacity: 0.78; }
+/* The one you are on is the only one lit: a thicker edge in the cover's ink,
+   lifted off the shelf, and the only one with anything to press. */
+.seal.is-now {
+  border: 2px solid var(--plate);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--plate) 10%, var(--shell)) 0%, var(--shell) 40%);
+  transform: translateY(-10px);
+  box-shadow: 0 26px 52px -28px rgba(0, 0, 0, 0.85);
+}
+
+.seal-state { font-size: 13px; letter-spacing: 0.16em; color: var(--text-3); }
+.seal.is-now .seal-state { display: none; }
+.seal-select { width: 100%; }
+.seal-name { font-size: 1.45rem; }
+.seal.is-now .seal-name { color: var(--plate); }
+
+.seal-disc {
+  display: grid;
+  place-items: center;
+  width: 108px;
+  height: 108px;
+  margin: 4px 0;
+  border-radius: 50%;
+  background: var(--disc);
+  color: var(--disc-deep);
+  box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--disc-deep) 32%, transparent);
+}
+.seal-disc .poster { font-size: 38px; }
+
+.seal-ask { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); font-size: 13px; margin-top: auto; }
+.seal-ask strong { font-size: 40px; color: var(--text); }
+.seal-reward { color: var(--text-3); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
+.seal-rule {
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 46, 85, 0.12);
+  border: 1px solid rgba(255, 46, 85, 0.4);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.seal-or { color: var(--text-3); font-size: 13px; }
+.seal-refuse { width: 100%; }
+.seal-refuse-note { color: var(--text-3); font-size: 11.5px; line-height: 1.3; }
+
+/* ══════════════════════════════════════════════════
+   THE MARGIN — what you do between seals
+   The two decisions you make every time sit on the
+   left where your hand already is; sigils run along
+   the top to be compared; the covenant and the leaves
+   share the shelf below.
+   ══════════════════════════════════════════════════ */
+
+.margin {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 150px;
+  grid-template-areas: "side stock deck" "side book deck";
+  gap: 16px;
+  align-items: start;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--field);
+  color: var(--ink);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.margin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle, var(--field-dot) 0 3.2px, transparent 3.6px) 0 0 / 14px 14px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 35%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 35%, #000 100%);
+}
+
+.margin-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; }
+.margin-sign {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: var(--field);
+  text-align: center;
+}
+.margin-sign .poster { font-size: 1.9rem; }
+.margin-sub { font-size: 12px; font-weight: 600; opacity: 0.72; }
+.margin-next, .margin-reroll { width: 100%; }
+.margin-reroll { background: #1f7a4d; color: #eafff4; gap: 8px; }
+.margin-reroll:hover:not(:disabled) { background: #1a6a42; }
+.margin-reroll .poster { font-size: 1.1rem; }
+.margin-ink {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: rgba(251, 241, 234, 0.14);
+  border: 1px solid rgba(251, 241, 234, 0.28);
+}
+.margin-ink .poster { font-size: 2rem; }
+.margin-label { color: var(--ink-2); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.margin-where { color: var(--ink-2); font-size: 12.5px; margin-top: auto; }
+
+.margin-stock { grid-area: stock; display: flex; flex-direction: column; gap: 14px; }
+/* A rack, not a shelf: the front page already owns ".shelf", and sharing the
+   name let its flex-direction leak in here and squash every price tab. */
+.rack {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 20px 16px 14px;
+  border-radius: var(--r-md);
+  background: rgba(10, 14, 54, 0.4);
+  border: 1px solid rgba(251, 241, 234, 0.18);
+  flex-wrap: wrap;
+}
+.rack-sigils { min-height: 236px; }
+.rack-lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 18px; align-items: start; }
+.rack-covenant { display: flex; flex-direction: column; gap: 8px; }
+.rack-leaves { display: flex; flex-direction: row; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.rack-label { font-size: 11px; letter-spacing: 0.16em; color: var(--ink-2); }
+.rack-none { color: var(--ink-2); font-size: 13px; }
+.rack-warn { width: 100%; color: var(--ink-2); font-size: 13px; }
+
+/* One thing for sale, with its price on a tab above it.
+   Called a "ware" rather than a "tab": the front page already owns ".tab" for
+   its filter buttons, and that rule's fixed height was flattening every one of
+   these to 38 pixels. */
+.ware { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 132px; padding-top: 16px; }
+.ware.is-wide { width: 100%; align-items: stretch; }
+.ware-price {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #f7d77e;
+  color: #2a0710;
+  font-size: 15px;
+}
+.ware-price.is-short { background: rgba(251, 241, 234, 0.3); color: var(--ink); }
+.ware-price.is-free { background: #3ef0c4; color: #06201d; }
+.ware-art { display: block; transition: transform 0.26s var(--ease-out); }
+.ware-art:hover:not(:disabled) { transform: translateY(-8px); }
+.ware-art:disabled { opacity: 0.5; cursor: not-allowed; }
+.ware.is-sold { opacity: 0.4; }
+.ware-note { font-size: 11.5px; line-height: 1.35; color: var(--ink-2); text-align: center; max-width: 132px; }
+.ware.is-wide .ware-note { text-align: left; max-width: none; }
+
+/* A sealed leaf, shut. */
+.leaf {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  width: 120px;
+  height: 168px;
+  border-radius: 10px;
+  background: var(--leaf-field, #1d1846);
+  box-shadow: 0 12px 24px -12px rgba(20, 2, 8, 0.7);
+  overflow: hidden;
+}
+.leaf::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(246, 238, 228, 0.55);
+}
+.leaf-sigil { --leaf-field: #1d1846; }
+.leaf-card { --leaf-field: #b3122e; }
+.leaf-rite { --leaf-field: #3b0f5c; }
+.leaf-seal { position: relative; font-size: 44px; color: #f6eee4; opacity: 0.9; }
+.leaf-label { position: absolute; bottom: 14px; left: 0; right: 0; font-size: 15px; color: #f6eee4; text-align: center; }
+
+/* A covenant, printed as a torn ticket. */
+.covenant {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 112px;
+  padding: 18px 16px;
+  border-radius: 14px 5px 14px 5px;
+  background: var(--field);
+  color: var(--ink);
+  overflow: hidden;
+}
+.covenant-rule { position: absolute; inset: 7px; border-radius: 10px 4px 10px 4px; border: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent); }
+.covenant-name { position: relative; font-size: 1.25rem; text-align: center; }
+
+.margin-book { grid-area: book; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: var(--r-md); background: rgba(10, 14, 54, 0.32); border: 1px solid rgba(251, 241, 234, 0.14); }
+.margin-bookrow { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.held { display: flex; flex-direction: column; gap: 6px; }
+.held-acts { display: flex; gap: 4px; }
+.held-acts button {
+  flex: 1;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(251, 241, 234, 0.16);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+.held-acts button:hover:not(:disabled) { background: rgba(251, 241, 234, 0.32); }
+.held-acts button:disabled { opacity: 0.3; }
+.held-covenants { display: flex; flex-direction: column; gap: 5px; margin-left: auto; }
+.held-covenants li {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(251, 241, 234, 0.14);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.margin-deck { grid-area: deck; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.margin-deck-count { color: var(--ink-2); font-size: 13px; font-weight: 600; }
+
+/* ══════════════════════════════════════════════════
+   AN OPENED LEAF
+   ══════════════════════════════════════════════════ */
+
+.sheet-wide { width: min(880px, calc(100% - 48px)); }
+.sheet-head { display: flex; flex-direction: column; gap: 4px; }
+.sheet-sub { color: var(--text-2); font-size: 14px; }
+.sheet-note { color: var(--text-2); font-size: 13.5px; }
+.sheet-acts { display: flex; gap: 10px; justify-content: flex-end; }
+
+.leaf-choices { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.leaf-choice { display: flex; flex-direction: column; align-items: center; gap: 9px; width: 150px; transition: transform 0.26s var(--ease-out); }
+.leaf-choice:hover { transform: translateY(-8px); }
+.leaf-choice-note { font-size: 12px; line-height: 1.35; color: var(--text-2); text-align: center; }
+
+.rite-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  width: 120px;
+  height: 168px;
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--ink);
+  box-shadow: 0 12px 24px -12px rgba(20, 2, 8, 0.7);
+  overflow: hidden;
+}
+.rite-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ink) 18%, transparent) 0 2.3px, transparent 2.7px) 0 0 / 10px 10px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 90%);
+  mask-image: linear-gradient(180deg, transparent 10%, #000 90%);
+}
+.rite-glyph { position: relative; font-size: 46px; color: var(--plate); }
+.rite-name { position: relative; font-size: 17px; text-align: center; padding: 0 8px; }
+
+.suit-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.suit-pick button {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--layer-1);
+  border: 1px solid var(--line-2);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.suit-pick button[aria-pressed="true"] { background: var(--cherry-fill); border-color: transparent; color: #fff; }
+
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 7px;
+  max-height: 44vh;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--layer-1);
+  border: 1px solid var(--line);
+}
+.deck-cell { transition: transform 0.2s var(--ease-out); }
+.deck-cell .card { width: 62px; height: 87px; border-radius: 6px; }
+.deck-cell .card-pip-ink { left: 16px; top: 42px; width: 34px; height: 34px; }
+.deck-cell .card-pip-plate { left: 19px; top: 45px; width: 34px; height: 34px; }
+.deck-cell .card-rank { font-size: 17px; }
+.deck-cell .card-corner { left: 5px; top: 4px; width: 16px; gap: 2px; }
+.deck-cell .card-corner svg { width: 9px; height: 9px; }
+.deck-cell .card-stamp { font-size: 8px; right: 4px; top: 5px; }
+.deck-cell:hover { transform: translateY(-4px); }
+.deck-cell.is-picked .card { box-shadow: 0 0 0 3px var(--cherry), 0 10px 18px -10px rgba(20, 2, 8, 0.8); }
+
+/* The one line of feedback that floats. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 600;
+  translate: -50% 0;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: var(--r-md);
+  background: var(--layer-2);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  font-size: 14px;
+  animation: lift-in 0.4s var(--ease-out);
+}
+
+@media (max-width: 1180px) {
+  .choose { grid-template-columns: minmax(0, 1fr); }
+  .margin { grid-template-columns: 200px minmax(0, 1fr); grid-template-areas: "side stock" "side book" "deck deck"; }
+  .margin-deck { flex-direction: row; justify-content: center; }
+}
+
+@media (max-width: 760px) {
+  .seals { grid-template-columns: minmax(0, 1fr); }
+  .seal.is-now { transform: none; }
+  .margin { grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "stock" "book" "deck"; padding: 14px; }
+  .rack-lower { grid-template-columns: minmax(0, 1fr); }
+  .tab { width: 104px; }
+  .leaf { width: 92px; height: 129px; }
+  .leaf-seal { font-size: 34px; }
+  .rite-card { width: 92px; height: 129px; }
+  .rite-glyph { font-size: 34px; }
+  .rite-name { font-size: 14px; }
+  .leaf-choice { width: 112px; }
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--cut-sm);
+  background: var(--layer-1);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.icon-btn:hover { background: var(--layer-2); color: var(--text); }

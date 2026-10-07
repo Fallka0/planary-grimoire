@@ -64,8 +64,44 @@ export const HAND_ORDER: HandName[] = [
 
 export interface Evaluation {
   name: HandName;
-  /** The cards that will fire, in the order they were played. */
+  /** The cards that will fire, in the order they are laid out. */
   scoring: Card[];
+  /** Every played card, arranged so the hand reads as what it is. */
+  arranged: Card[];
+}
+
+/**
+ * Lays a played hand out so it reads as the hand it is.
+ *
+ * Five cards in the order you happened to pick them up say nothing; the same
+ * five grouped say "full house" before you have finished looking. So pairs and
+ * sets sit together, a straight runs low to high, and a flush keeps its ranks
+ * in order — and whatever does not score is pushed to the end, out of the way
+ * of the cards that do.
+ *
+ * The scoring order follows this arrangement, which is why the pops run left
+ * to right along a hand that already makes sense.
+ */
+export function arrange(cards: Card[], name: HandName, scoring: Card[]): Card[] {
+  const scores = new Set(scoring);
+  const counts = new Map<string, number>();
+  for (const card of cards) counts.set(card.rank, (counts.get(card.rank) ?? 0) + 1);
+
+  const straightish = name === "Straight" || name === "Straight flush";
+  const flushish = name === "Flush";
+
+  return [...cards].sort((a, b) => {
+    // Cards that score come first, always: they are the hand.
+    if (scores.has(a) !== scores.has(b)) return scores.has(a) ? -1 : 1;
+    if (straightish) return rankValue(a.rank) - rankValue(b.rank);
+    if (flushish) return rankValue(b.rank) - rankValue(a.rank);
+    // Otherwise by set size, then by rank: three fours before two sevens.
+    const sizeA = counts.get(a.rank) ?? 0;
+    const sizeB = counts.get(b.rank) ?? 0;
+    if (sizeA !== sizeB) return sizeB - sizeA;
+    if (a.rank !== b.rank) return rankValue(b.rank) - rankValue(a.rank);
+    return "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit);
+  });
 }
 
 /**
@@ -97,16 +133,23 @@ export function evaluate(cards: Card[]): Evaluation | null {
   // In played order, so the pops run left to right across the table.
   const inOrder = (chosen: Card[]) => cards.filter((card) => chosen.includes(card));
 
-  if (straight && flush) return { name: "Straight flush", scoring: cards };
-  if (groups[0].length === 4) return { name: "Four of a kind", scoring: inOrder(groups[0]) };
-  if (groups[0].length === 3 && groups[1]?.length === 2) return { name: "Full house", scoring: cards };
-  if (flush) return { name: "Flush", scoring: cards };
-  if (straight) return { name: "Straight", scoring: cards };
-  if (groups[0].length === 3) return { name: "Three of a kind", scoring: inOrder(groups[0]) };
-  if (groups[0].length === 2 && groups[1]?.length === 2) return { name: "Two pair", scoring: inOrder([...groups[0], ...groups[1]]) };
-  if (groups[0].length === 2) return { name: "Pair", scoring: inOrder(groups[0]) };
+  const made = (name: HandName, scoring: Card[]): Evaluation => {
+    const arranged = arrange(cards, name, scoring);
+    // The scoring set is re-read off the arrangement, so it fires in the order
+    // the cards are actually lying on the table.
+    return { name, scoring: arranged.filter((card) => scoring.includes(card)), arranged };
+  };
+
+  if (straight && flush) return made("Straight flush", cards);
+  if (groups[0].length === 4) return made("Four of a kind", inOrder(groups[0]));
+  if (groups[0].length === 3 && groups[1]?.length === 2) return made("Full house", cards);
+  if (flush) return made("Flush", cards);
+  if (straight) return made("Straight", cards);
+  if (groups[0].length === 3) return made("Three of a kind", inOrder(groups[0]));
+  if (groups[0].length === 2 && groups[1]?.length === 2) return made("Two pair", inOrder([...groups[0], ...groups[1]]));
+  if (groups[0].length === 2) return made("Pair", inOrder(groups[0]));
 
   // Nothing made: the single highest card carries the hand on its own.
   const best = [...cards].sort((a, b) => rankValue(b.rank) - rankValue(a.rank))[0];
-  return { name: "High card", scoring: [best] };
+  return made("High card", [best]);
 }

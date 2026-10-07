@@ -2,12 +2,15 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { DECK_BY_ID, type DeckId } from "@/game/decks";
 import { CHAPTERS } from "@/game/seals";
+import { OpenLeaf } from "@/components/OpenLeaf";
+import { SealSelect } from "@/components/SealSelect";
 import { Shop } from "@/components/Shop";
 import { Table } from "@/components/Table";
 import { TopBar } from "@/components/TopBar";
+import { armAudio } from "@/lib/audio";
 import { useRun } from "@/lib/useRun";
 
 /**
@@ -20,6 +23,9 @@ import { useRun } from "@/lib/useRun";
  */
 function Run() {
   const params = useSearchParams();
+  // Browsers refuse to make a sound until the page has been touched; this
+  // takes the first touch and then takes itself off.
+  useEffect(() => armAudio(), []);
   const asked = params.get("deck");
   const fresh = params.get("new") === "1";
   const deck = (DECK_BY_ID.has(asked as DeckId) ? (asked as DeckId) : "plain") as DeckId;
@@ -30,7 +36,11 @@ function Run() {
   return (
     <div className="app">
       <TopBar chapter={game.run.chapter} kind={game.kind} ink={game.run.ink} />
-      {game.phase === "shop" ? (
+      {game.phase === "choosing" ? (
+        <main className="stage">
+          <SealSelect game={game} />
+        </main>
+      ) : game.phase === "shop" ? (
         <main className="stage">
           <Shop game={game} />
         </main>
@@ -61,6 +71,12 @@ function Run() {
           <Table game={game} />
         </main>
       )}
+      {game.leaf ? <OpenLeaf game={game} /> : null}
+      {game.note ? (
+        <p className="toast" role="status">
+          {game.note}
+        </p>
+      ) : null}
     </div>
   );
 }

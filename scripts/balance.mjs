@@ -28,7 +28,7 @@ const src = join(here, "..", "src", "game");
 // it ships.
 const staging = mkdtempSync(join(tmpdir(), "grimoire-"));
 mkdirSync(staging, { recursive: true });
-for (const name of ["cards.ts", "hands.ts", "score.ts", "sigils.ts", "seals.ts", "decks.ts", "rng.ts", "run.ts"]) {
+for (const name of ["cards.ts", "hands.ts", "score.ts", "sigils.ts", "seals.ts", "decks.ts", "rng.ts", "run.ts", "rites.ts", "leaves.ts", "covenants.ts", "tokens.ts"]) {
   writeFileSync(join(staging, name), readFileSync(join(src, name), "utf8").replace(/(from "\.\/[A-Za-z]+)"/g, '$1.ts"'));
 }
 const hands = await import(`file://${join(staging, "hands.ts")}`);
@@ -37,6 +37,10 @@ const sigils = await import(`file://${join(staging, "sigils.ts")}`);
 const seals = await import(`file://${join(staging, "seals.ts")}`);
 const decks = await import(`file://${join(staging, "decks.ts")}`);
 const run = await import(`file://${join(staging, "run.ts")}`);
+const rites = await import(`file://${join(staging, "rites.ts")}`);
+const leaves = await import(`file://${join(staging, "leaves.ts")}`);
+const covenants = await import(`file://${join(staging, "covenants.ts")}`);
+const rng = await import(`file://${join(staging, "rng.ts")}`);
 
 let failures = 0;
 function check(name, condition, detail = "") {
@@ -128,6 +132,54 @@ for (let c = 2; c <= seals.CHAPTERS; c++) if (seals.quotaFor(c, "lesser") <= sea
 check("every chapter asks for more than the last", rising);
 check("there is a warden for every chapter", new Set(Array.from({ length: seals.CHAPTERS }, (_, i) => seals.wardenFor(i + 1).id)).size === seals.CHAPTERS);
 
+console.log("\nLaying a hand out so it reads");
+const fullHouse = hands.evaluate(hand("4S", "7D", "4D", "7C", "4C"));
+check("a full house groups the three before the two", fullHouse.arranged.map((c) => c.rank).join("") === "444" + "77", fullHouse.arranged.map((c) => c.id).join(" "));
+const straight = hands.evaluate(hand("8H", "5S", "7C", "4D", "6S"));
+check("a straight runs low to high", straight.arranged.map((c) => c.rank).join(",") === "4,5,6,7,8", straight.arranged.map((c) => c.rank).join(","));
+const onePair = hands.evaluate(hand("2C", "KS", "9D", "KH", "5S"));
+check("the pair comes first and the strays go to the back", onePair.arranged.slice(0, 2).every((c) => c.rank === "K"), onePair.arranged.map((c) => c.id).join(" "));
+check("the scoring order follows the arrangement", onePair.scoring.map((c) => c.id).join(" ") === onePair.arranged.slice(0, 2).map((c) => c.id).join(" "));
+
+console.log("\nRites");
+const deck = decks.buildDeck(decks.DECK_BY_ID.get("plain"));
+const blade = rites.RITE_BY_ID.get("blade");
+const bladed = rites.workRite(deck, blade, [deck[0].id, deck[1].id]);
+check("The Blade marks exactly the cards it was given", bladed.filter((c) => c.mark === "mult").length === 2);
+check("and leaves the rest alone", bladed.filter((c) => c.mark === "").length === deck.length - 2);
+check("it will not mark more than it may", rites.workRite(deck, blade, deck.slice(0, 5).map((c) => c.id)).filter((c) => c.mark === "mult").length === 2);
+const weave = rites.RITE_BY_ID.get("weave");
+const woven = rites.renumber(rites.workRite(deck, weave, [deck[0].id, deck[1].id, deck[2].id], "H"));
+check("The Weave turns cards to the named suit", woven.filter((c) => c.suit === "H").length === 13 + 3);
+check("and the deck still has no two cards with one id", new Set(woven.map((c) => c.id)).size === woven.length);
+const climb = rites.RITE_BY_ID.get("climb");
+const ace = deck.find((c) => c.rank === "A");
+check("The Climb leaves an ace where it is", rites.workRite(deck, climb, [ace.id]).find((c) => c.id === ace.id || c.rank === "A"));
+
+console.log("\nLeaves");
+for (const spec of leaves.LEAF_KINDS) {
+  const contents = leaves.fillLeaf(spec.kind, new rng.Rng("LEAF"), []);
+  const held = contents.sigils ?? contents.cards ?? contents.rites ?? [];
+  check(`${spec.name} holds ${spec.shown}`, held.length === spec.shown, String(held.length));
+}
+check("a sigil leaf never offers what is already in the book", leaves.fillLeaf("sigil", new rng.Rng("X"), sigils.SIGILS.map((s) => s.id)).sigils.length === 0);
+
+console.log("\nCovenants");
+check("a fresh run has signed none", covenants.shaped([]).slots === 0);
+check("a wider spine is one more slot", covenants.shaped(["spine"]).slots === 1);
+check("usury raises the interest cap", covenants.shaped(["usury"]).interestCap === 8 && covenants.shaped([]).interestCap === 5);
+check("cheap ink takes one off a restock", covenants.shaped(["cheapInk"]).rerollOff === 1);
+
+console.log("\nRefusing a seal");
+let refusing = run.newRun("plain", "REFUSE");
+check("a lesser seal can be walked away from", run.canRefuse(refusing));
+const walked = run.refuse(refusing);
+check("walking away moves to the next seal", walked.run.seal === 1);
+check("and takes a token for it", walked.run.tokens.length === 1 || walked.token === "ink");
+check("no ink is paid for a seal you did not break", walked.token === "ink" ? walked.run.ink > refusing.ink : walked.run.ink === refusing.ink);
+let atWarden = { ...refusing, seal: 2 };
+check("a warden cannot be refused", !run.canRefuse(atWarden));
+
 console.log("\nA run, played by a robot");
 // The robot is deliberately simple: it plays the best hand it can see from the
 // cards in front of it and never discards cleverly. A human should beat it, so
@@ -135,6 +187,7 @@ console.log("\nA run, played by a robot");
 function robotRun(seed) {
   let state = run.newRun("plain", seed);
   for (let guard = 0; guard < 40 && !state.won; guard++) {
+    // The robot never walks away from a seal; it is measuring the hard path.
     const started = run.startSeal(state);
     state = started.run;
     let round = started.round;
@@ -182,10 +235,9 @@ function robotRun(seed) {
     // Spend: buy the first thing it can afford, left to right.
     const rolled = run.rollShop(state);
     state = rolled.run;
-    for (const offer of rolled.shop.offers) {
-      if (offer.kind !== "sigil") continue;
+    for (const offer of rolled.shop.sigils) {
       if (!run.canBuy(state, offer)) continue;
-      state = run.buy(state, rolled.shop, offer).run;
+      state = run.addSigil(run.spend(state, rolled.shop, offer).run, offer.sigil);
     }
   }
   return { chapter: state.chapter, seal: state.seal, won: state.won };

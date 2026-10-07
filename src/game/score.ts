@@ -40,6 +40,8 @@ export interface ScoreEvent {
 
 export interface Resolution {
   hand: HandName;
+  /** Every played card, laid out so the hand reads as what it is. */
+  arranged: Card[];
   scoring: Card[];
   events: ScoreEvent[];
   points: number;
@@ -143,7 +145,7 @@ export function resolve(input: ScoreInput): Resolution | null {
   }
 
   const total = totalUnder(rule, input.handNumber, Math.floor(points * mult));
-  return { hand: evaluation.name, scoring, events, points, mult, total };
+  return { hand: evaluation.name, arranged: evaluation.arranged, scoring, events, points, mult, total };
 }
 
 function labelOf(effect: Effect): string {

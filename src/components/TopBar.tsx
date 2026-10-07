@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { CHAPTERS, SEAL_NAME, type SealKind } from "@/game/seals";
+import { sfx } from "@/lib/audio";
 import { buildAuthUrl } from "@/lib/auth";
 import { absorbSessionFromHash, loadSession } from "@/lib/session";
 
@@ -51,6 +52,28 @@ export function Mark({ size = 34 }: { size?: number }) {
   );
 }
 
+/** The one control over the sound: on, or off, and remembered. */
+function Mute() {
+  const [muted, setMuted] = useState(false);
+  useEffect(() => setMuted(sfx.muted), []);
+  return (
+    <button
+      type="button"
+      className="icon-btn"
+      aria-pressed={muted}
+      aria-label={muted ? "Turn the sound on" : "Turn the sound off"}
+      title={muted ? "Sound off" : "Sound on"}
+      onClick={() => {
+        sfx.begin();
+        sfx.setMuted(!muted);
+        setMuted(!muted);
+      }}
+    >
+      {muted ? <VolumeX size={17} strokeWidth={1.9} aria-hidden="true" /> : <Volume2 size={17} strokeWidth={1.9} aria-hidden="true" />}
+    </button>
+  );
+}
+
 export function TopBar({ chapter, kind, ink }: { chapter?: number; kind?: SealKind; ink?: number }) {
   return (
     <header className="topbar">
@@ -86,6 +109,7 @@ export function TopBar({ chapter, kind, ink }: { chapter?: number; kind?: SealKi
           <span className="ink-label">ink</span>
         </span>
       ) : null}
+      <Mute />
       <Who />
     </header>
   );
