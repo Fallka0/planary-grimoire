@@ -249,17 +249,29 @@ export function useRun(initial?: { deck: DeckId; seed?: string }) {
 
   const toggle = useCallback(
     (id: CardId) => {
-      if (phase !== "picking") return;
+      // "dealing" counts: the cards are in hand the moment they are dealt, and
+      // refusing to pick one until the animation finished made the opening of
+      // every seal feel like the game had not started yet.
+      if (phase !== "picking" && phase !== "dealing") return;
+      if (!round || round.zone[id] !== "hand") return;
+      const has = round.selected.includes(id);
+      if (!has && round.selected.length >= MAX_SELECT) return;
+      // Sound and buzz happen here rather than inside the updater below. React
+      // may run an updater twice, or later than the gesture that caused it, and
+      // a click that arrives at either of those moments is not felt as the
+      // answer to the finger — which is most of what "laggy" was.
+      sfx.tap();
+      haptic.tap();
+      // The guard is repeated inside because `round` here is this render's copy,
+      // and two fingers landing in one frame would both read it.
       setRound((current) => {
         if (!current || current.zone[id] !== "hand") return current;
-        const has = current.selected.includes(id);
-        if (!has && current.selected.length >= MAX_SELECT) return current;
-        sfx.tap();
-        haptic.tap();
-        return { ...current, selected: has ? current.selected.filter((x) => x !== id) : [...current.selected, id] };
+        const on = current.selected.includes(id);
+        if (!on && current.selected.length >= MAX_SELECT) return current;
+        return { ...current, selected: on ? current.selected.filter((x) => x !== id) : [...current.selected, id] };
       });
     },
-    [phase],
+    [phase, round],
   );
 
   const play = useCallback(() => {

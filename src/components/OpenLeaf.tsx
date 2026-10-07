@@ -4,6 +4,7 @@ import { useState } from "react";
 import { prettyCard, SUITS, type Suit, SUIT_NAMES } from "@/game/cards";
 import { HAND_STEPS, levelled, levelOf } from "@/game/hands";
 import { LEAF_BY_KIND } from "@/game/leaves";
+import { press } from "@/lib/press";
 import type { useRun } from "@/lib/useRun";
 import { PlayCard, SigilCard } from "./Card";
 
@@ -63,15 +64,15 @@ export function OpenLeaf({ game }: { game: Run }) {
                   className={`deck-cell${on ? " is-picked" : ""}`}
                   aria-pressed={on}
                   aria-label={prettyCard(card)}
-                  onClick={() =>
+                  {...press(() =>
                     setPicked((current) =>
                       current.includes(card.id)
                         ? current.filter((id) => id !== card.id)
                         : current.length < rite.cards
                           ? [...current, card.id]
                           : current,
-                    )
-                  }
+                    ),
+                  )}
                 >
                   <PlayCard card={card} />
                 </button>

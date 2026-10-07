@@ -471,8 +471,18 @@ ul, ol { padding: 0; list-style: none; }
   width: 120px;
   margin-inline: -16px;
   transform: translateY(var(--lift)) rotate(var(--turn));
-  transition: transform 0.26s var(--ease-out), margin 0.26s var(--ease-out);
+  /* Transform only. `margin` was in here too, and margin cannot be animated
+     off the main thread — every frame relaid the whole fan out. It only ever
+     changes at a breakpoint anyway, so the transition bought nothing and cost
+     a layout pass per frame. */
+  transition: transform 0.17s var(--ease-out);
+  /* Promoted, so the lift is the compositor moving a finished layer rather
+     than eight cards being redrawn. The scoring animations stay as slow as
+     they were; this is the one movement that answers a finger. */
+  will-change: transform;
+  cursor: pointer;
 }
+.hand-card:disabled { cursor: default; }
 .hand-card:hover:not(:disabled) { transform: translateY(calc(var(--lift) - 10px)) rotate(var(--turn)); z-index: 60 !important; }
 .hand-card.is-picked { transform: translateY(calc(var(--lift) - 34px)) rotate(var(--turn)); }
 .hand-card.is-picked .card { box-shadow: 0 0 0 3px var(--ink), 0 16px 28px -14px rgba(20, 2, 8, 0.8); }

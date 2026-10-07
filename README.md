@@ -154,6 +154,34 @@ were dead for their first week. Without `viewport-fit=cover` in the viewport
 meta every one of them resolves to `0`, silently, so all the careful work
 around the notch did exactly nothing and looked like it was working.
 
+## Choosing a card
+
+Picking a card is bound to `pointerdown`, not `click`, and the difference is
+the whole of what "laggy" meant. A browser fires `click` on *release*: on a
+phone that is after the finger has left the glass, and with a mouse it is
+however long the button was held. The work behind a pick was never slow — a
+React commit measured 2.3 ms and changed three DOM nodes — the card simply
+started moving after the gesture that chose it had finished.
+
+So `src/lib/press.ts` responds on contact, and leaves `click` to the keyboard,
+which still arrives as one with `detail === 0` to say no pointer was involved.
+It is used for *choosing* and deliberately not for committing: Play hand and
+Discard stay on `click`, because being able to put a finger down, think, and
+slide off to cancel is worth more than the milliseconds.
+
+Two smaller things were lying on top of it. A card could be picked while the
+hand was still being dealt, but `is-dealing` runs a keyframe animation and an
+animation beats a transition, so the card did not visibly move — picking one
+now ends its deal early. And the opening deal refused taps outright for 1.3
+seconds, which is why the start of a seal felt dead; the cards are in hand the
+moment they are dealt, so they are pickable from then.
+
+The lift itself is transform-only and composited. `margin` used to be in that
+transition, and margin cannot be animated off the main thread, so every frame
+relaid the whole fan out for a property that only ever changes at a breakpoint.
+None of this touched the scoring choreography, which is slow on purpose: the
+arithmetic is meant to be followable. Input is not.
+
 ## At a keyboard
 
 `1`–`8` pick cards out of the fan in the order they are lying, `Enter` plays

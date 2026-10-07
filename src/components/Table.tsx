@@ -5,6 +5,7 @@ import { formatMult, formatNumber } from "@/game/cards";
 import { SEAL_NAME, wardenNote } from "@/game/seals";
 import type { Sigil } from "@/game/sigils";
 import { MAX_SELECT } from "@/game/run";
+import { press } from "@/lib/press";
 import type { useRun } from "@/lib/useRun";
 import { CardBack, PlayCard, SigilCard } from "./Card";
 
@@ -85,16 +86,12 @@ export function Table({ game }: { game: Run }) {
   const [sort, setSort] = useState<"rank" | "suit">("rank");
   if (!run || !round) return <div className="loading">Opening the book…</div>;
 
-  const hand = [...game.inHand].sort(
+  // Rank is the default; by suit groups them and keeps rank order inside each.
+  const shown = [...game.inHand].sort(
     sort === "suit"
-      ? (a, b) => "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit) || "23456789⁠".length + 0
-      : () => 0,
+      ? (a, b) => "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit) || rankOf(b) - rankOf(a)
+      : (a, b) => rankOf(b) - rankOf(a) || "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit),
   );
-  // Sorting by rank is the default; by suit groups them and keeps rank order inside.
-  const ranked = [...game.inHand].sort((a, b) => rankOf(b) - rankOf(a) || "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit));
-  const suited = [...game.inHand].sort((a, b) => "SHDC".indexOf(a.suit) - "SHDC".indexOf(b.suit) || rankOf(b) - rankOf(a));
-  const shown = sort === "suit" ? suited : ranked;
-  void hand;
 
   // Only while they are still in play: the ids stay on the round so the tally
   // can name them, but a card that has gone to the discard must leave the felt.
@@ -202,11 +199,15 @@ export function Table({ game }: { game: Run }) {
             const offset = i - (shown.length - 1) / 2;
             const picked = round.selected.includes(card.id);
             const delay = game.dealt[card.id];
+            // A dealing card is mid-animation, and an animation beats a
+            // transition: while it ran, a picked card could not visibly lift.
+            // Picking one therefore ends its deal early and lets it rise.
+            const dealing = delay !== undefined && !picked;
             return (
               <button
                 key={card.id}
                 type="button"
-                className={`hand-card${picked ? " is-picked" : ""}${delay !== undefined ? " is-dealing" : ""}`}
+                className={`hand-card${picked ? " is-picked" : ""}${dealing ? " is-dealing" : ""}`}
                 style={
                   {
                     // The curve is kept unitless so the stylesheet can flatten
@@ -218,10 +219,13 @@ export function Table({ game }: { game: Run }) {
                     zIndex: 20 + i,
                   } as React.CSSProperties
                 }
-                onClick={() => game.toggle(card.id)}
+                {...press(() => game.toggle(card.id))}
                 aria-pressed={picked}
                 aria-label={`${card.rank} of ${card.suit}`}
-                disabled={phase !== "picking"}
+                // Pickable while the hand is still landing. The cards are
+                // already in hand by then, and swallowing those taps is what
+                // made the first second and a half of a seal feel dead.
+                disabled={phase !== "picking" && phase !== "dealing"}
               >
                 <PlayCard card={card} />
               </button>
