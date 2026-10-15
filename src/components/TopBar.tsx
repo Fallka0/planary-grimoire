@@ -7,7 +7,7 @@ import { CHAPTERS, SEAL_NAME, type SealKind } from "@/game/seals";
 import { sfx } from "@/lib/audio";
 import { fullscreenAvailable, isStandalone, toggleFullscreen, useFullscreen } from "@/lib/device";
 import { buildAuthUrl } from "@/lib/auth";
-import { absorbSessionFromHash, loadSession } from "@/lib/session";
+import { absorbSessionFromHash, freshSession, loadSession, markSsoChecked, ssoChecked } from "@/lib/session";
 
 const CASINO_URL = process.env.NEXT_PUBLIC_CASINO_URL || "https://casino.planary.ch";
 
@@ -23,8 +23,25 @@ function Who() {
   const [name, setName] = useState<string | null>(null);
 
   useEffect(() => {
+    let live = true;
     const session = absorbSessionFromHash() ?? loadSession();
-    setName(session?.name ?? null);
+    if (session) {
+      setName(session.name);
+      return;
+    }
+    void freshSession().then((fresh) => {
+      if (!live) return;
+      if (fresh) return setName(fresh.name);
+      // Signed in to the casino already? Ask planary-auth once per tab, without a form: it sends
+      // a signed-in player straight back with a token and anyone else straight back without one.
+      if (!ssoChecked()) {
+        markSsoChecked();
+        window.location.replace(buildAuthUrl("login", window.location.href.split("#")[0], "silent"));
+      }
+    });
+    return () => {
+      live = false;
+    };
   }, []);
 
   if (name) return <span className="who" title="Finished books are recorded in the casino">{name}</span>;

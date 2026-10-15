@@ -1,7 +1,7 @@
 "use client";
 
 import type { DeckId } from "@/game/decks";
-import { loadSession } from "./session";
+import { freshSession, loadSession } from "./session";
 
 export const CASINO_API = process.env.NEXT_PUBLIC_CASINO_API || "https://planary-casino-api.planary.workers.dev";
 
@@ -39,7 +39,8 @@ export interface Unlocked {
 
 /** Posts a finished run. Quiet on failure: a lost unlock must not cost the win. */
 export async function reportRun(report: RunReport): Promise<Unlocked[]> {
-  const session = loadSession();
+  // A long run can outlast the access token; refresh it rather than lose the book.
+  const session = await freshSession();
   if (!session) return [];
   try {
     const res = await fetch(`${CASINO_API}/v1/grimoire/run`, {
